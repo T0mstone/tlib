@@ -131,3 +131,19 @@ impl<A: Clone, B: Clone> Union<A, B> {
         }
     }
 }
+
+pub trait ErrToUnion<T, E, U> {
+    fn err_to_union_a(self) -> Result<T, Union<E, U>>;
+
+    fn err_to_union_b(self) -> Result<T, Union<U, E>>;
+}
+
+impl<T, E, U> ErrToUnion<T, E, U> for Result<T, E> {
+    fn err_to_union_a(self) -> Result<T, Union<E, U>> {
+        self.map_err(|e| Union::A(e))
+    }
+
+    fn err_to_union_b(self) -> Result<T, Union<U, E>> {
+        self.map_err(|e| Union::B(e))
+    }
+}
