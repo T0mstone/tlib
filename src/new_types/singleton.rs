@@ -7,6 +7,7 @@ pub struct Singleton<T> {
 }
 
 impl<T> Singleton<T> {
+    /// Creates a new, uninitialized singleton
     pub const fn new() -> Self {
         Self {
             inner: None
@@ -34,6 +35,7 @@ impl<T> Singleton<T> {
         }
     }
 
+    /// Returns whether the singleton is initialized
     pub fn is_initialized(&self) -> bool {
         self.inner.is_some()
     }
@@ -114,7 +116,7 @@ impl<T> Singleton<T> {
         Singleton { inner: self.inner.map(f) }
     }
 
-    /// works like [`map`](#method.map) but modifies `self` instead of returning a new value.
+    /// works like [`map`](#method.map) but modifies `self` instead of returning a new `Singleton`.
     pub fn map_inplace<F: FnMut(T) -> T>(&mut self, mut f: F) {
         let inner = match self.inner.take() {
             Some(t) => Some(f(t)),
