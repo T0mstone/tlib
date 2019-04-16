@@ -1,2 +1,5 @@
-pub mod union;
-pub mod singleton;
+mod singleton;
+mod union;
+
+pub use singleton::*;
+pub use union::*;
