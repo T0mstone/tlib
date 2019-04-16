@@ -12,7 +12,10 @@ impl<T> Deref for Singleton<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        self.inner()
+        if !self.is_initialized() {
+            panic!("tried to dereference an uninitialized Singleton");
+        }
+        self.as_ref().unwrap()
     }
 }
 
