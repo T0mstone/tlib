@@ -2,9 +2,11 @@
 //!
 //! This crate is very lightweight and has no dependencies or cargo features
 
-mod new_types;
-pub use new_types::*;
-
 mod macros;
+mod singleton;
+mod union;
+
 pub mod vec;
 
+pub use singleton::Singleton;
+pub use union::Union;
