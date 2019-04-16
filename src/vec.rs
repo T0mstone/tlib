@@ -16,3 +16,23 @@ pub fn unzip<T, U>(v: Vec<(T, U)>) -> (Vec<T>, Vec<U>) {
     }
     (a, b)
 }
+
+pub trait VecZipTrait<T, U> {
+    fn zip(self, other: Vec<U>) -> Vec<(T, U)>;
+}
+
+pub trait VecUnzipTrait<T, U> {
+    fn unzip(self) -> (Vec<T>, Vec<U>);
+}
+
+impl<T, U> VecZipTrait<T, U> for Vec<T> {
+    fn zip(self, other: Vec<U>) -> Vec<(T, U)> {
+        zip(self, other)
+    }
+}
+
+impl<T, U> VecUnzipTrait<T, U> for Vec<(T, U)> {
+    fn unzip(self) -> (Vec<T>, Vec<U>) {
+        unzip(self)
+    }
+}

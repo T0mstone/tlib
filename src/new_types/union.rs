@@ -1,16 +1,17 @@
+use std::convert::identity;
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Union<A, B> {
     A(A),
     B(B)
 }
 
-// Unwrapping
 impl<A, B> Union<A, B> {
     /// Moves into the [`A`](#variant.A) value, panicking if called on a [`B`](#variant.B)
     pub fn unwrap_a(self) -> A {
         match self {
             Union::A(x) => x,
-            _ => panic!("Called Union::unwrap_a() on a B value")
+            _ => panic!("Called Union::unwrap_a() on a Union::B value")
         }
     }
 
@@ -18,23 +19,23 @@ impl<A, B> Union<A, B> {
     pub fn unwrap_b(self) -> B {
         match self {
             Union::B(x) => x,
-            _ => panic!("Called Union::unwrap_b() on an A value")
+            _ => panic!("Called Union::unwrap_b() on a Union::A value")
         }
     }
 
-    /// Returns a mutable reference to the [`A`](#variant.A) value, panicking if called on a [`B`](#variant.B)
-    pub fn a_mut(&mut self) -> &mut A {
+    /// Converts from `Union<A, B>` to `Union<&A, &B>`
+    pub fn as_ref(&self) -> Union<&A, &B> {
         match self {
-            Union::A(x) => x,
-            _ => panic!("Called Union::a_mut() on a B value")
+            Union::A(a) => Union::A(a),
+            Union::B(b) => Union::B(b),
         }
     }
 
-    /// Returns a mutable reference to the [`B`](#variant.B) value, panicking if called on an [`A`](#variant.A)
-    pub fn b_mut(&mut self) -> &mut B {
+    /// Converts from `Union<A, B>` to `Union<&mut A, &mut B>`
+    pub fn as_mut(&mut self) -> Union<&mut A, &mut B> {
         match self {
-            Union::B(x) => x,
-            _ => panic!("Called Union::b_mut() on an A value")
+            Union::A(a) => Union::A(a),
+            Union::B(b) => Union::B(b),
         }
     }
 
@@ -51,63 +52,60 @@ impl<A, B> Union<A, B> {
         !self.is_a()
     }
 
-    /// Returns an `Optiom<&A>`, mapping [`A(x)`](#variant.A) to `Some(&x)` and [`B(_)`](#variant.B) to `None`
-    pub fn to_option_a(&self) -> Option<&A> {
+    /// Returns an `Optiom<A>`, mapping [`A(x)`](#variant.A) to `Some(x)` and [`B(_)`](#variant.B) to `None`
+    pub fn some_a(self) -> Option<A> {
         match self {
             Union::A(x) => Some(x),
             _ => None
         }
     }
 
-    /// Returns an `Optiom<&B>`, mapping [`B(x)`](#variant.B) to `Some(&x)` and [`A(_)`](#variant.A) to `None`
-    pub fn to_option_b(&self) -> Option<&B> {
+    /// Returns an `Optiom<B>`, mapping [`B(x)`](#variant.B) to `Some(x)` and [`A(_)`](#variant.A) to `None`
+    pub fn some_b(self) -> Option<B> {
         match self {
             Union::B(x) => Some(x),
             _ => None
         }
     }
 
-    /// Returns an `Optiom<&A>`, mapping [`A(x)`](#variant.A) to `Some(x)` and [`B(_)`](#variant.B) to `None`
-    pub fn into_option_a(self) -> Option<A> {
-        match self {
-            Union::A(x) => Some(x),
-            _ => None
-        }
-    }
-
-    /// Returns an `Optiom<&B>`, mapping [`B(x)`](#variant.B) to `Some(x)` and [`A(_)`](#variant.A) to `None`
-    pub fn into_option_b(self) -> Option<B> {
-        match self {
-            Union::B(x) => Some(x),
-            _ => None
-        }
-    }
-}
-
-// Other useful functions
-impl<A, B> Union<A, B> {
-    /// Applies `f` to the inside value if called on [`A`](#variant.A), does nothing if called on a [`B`](#variant.B)
-    pub fn map_a<T, F: FnMut(A) -> T>(self, mut f: F) -> Union<T, B> {
-        match self {
-            Union::A(x) => Union::A(f(x)),
-            Union::B(x) => Union::B(x)
-        }
-    }
-
-    /// Applies `f` to the inside value if called on [`B`](#variant.B), does nothing if called on a [`A`](#variant.A)
-    pub fn map_b<T, F: FnMut(B) -> T>(self, mut f: F) -> Union<A, T> {
-        match self {
-            Union::A(x) => Union::A(x),
-            Union::B(x) => Union::B(f(x))
-        }
-    }
-
-    /// Applies `f_a` to the inside value if called on [`A`](#variant.A), Applies `f_B` to the inside value if called on [`B`](#variant.B)
+    /// Applies `f_a` to the inside value if called on [`A`](#variant.A), Applies `f_b` to the inside value if called on [`B`](#variant.B)
     pub fn map<T, U, F1: FnMut(A) -> T, F2: FnMut(B) -> U>(self, mut f_a: F1, mut f_b: F2) -> Union<T, U> {
         match self {
             Union::A(x) => Union::A(f_a(x)),
             Union::B(x) => Union::B(f_b(x))
         }
+    }
+
+    /// Applies `f` to the inside value if called on [`A`](#variant.A), does nothing if called on a [`B`](#variant.B)
+    pub fn map_a<T, F: FnMut(A) -> T>(self, f: F) -> Union<T, B> {
+        self.map(f, identity)
+    }
+
+    /// Applies `f` to the inside value if called on [`B`](#variant.B), does nothing if called on a [`A`](#variant.A)
+    pub fn map_b<T, F: FnMut(B) -> T>(self, f: F) -> Union<A, T> {
+        self.map(identity, f)
+    }
+
+    /// works like [`map`](#method.map) but does not consume `self`
+    pub fn map_ref<T, U, F1: FnMut(&A) -> T, F2: FnMut(&B) -> U>(&self, mut f_a: F1, mut f_b: F2) -> Union<T, U> {
+        match self {
+            Union::A(x) => Union::A(f_a(x)),
+            Union::B(x) => Union::B(f_b(x))
+        }
+    }
+
+    /// works like [`map_a`](#method.map_a) but does not consume `self` and clones any [`B`](#variant.B) value
+    pub fn map_ref_a<T, F: FnMut(&A) -> T>(&self, f: F) -> Union<T, B>
+        where B: Clone
+    {
+        self.map_ref(f, |x| x.clone())
+    }
+
+    /// works like [`map_b`](#method.map_b) but does not consume `self` and clones any [`A`](#variant.A) value
+    pub fn map_ref_b<T, F: FnMut(&B) -> T>(&self, f: F) -> Union<A, T>
+        where A: Clone
+    {
+        self.map_ref(|x| x.clone(), f)
     }
 }
 
@@ -118,32 +116,5 @@ impl<A> Union<A, A> {
             Union::A(x) => x,
             Union::B(x) => x
         }
-    }
-}
-
-impl<A: Clone, B: Clone> Union<A, B> {
-    /// Changes `Union<A, B>` to `Union<A, B>` by cloning the inner value
-    /// Also works with `Union<&A, B>`, `Union<A, &B>` and `Union<&A, &B>`
-    pub fn cloned(&self) -> Union<A, B> {
-        match self {
-            Union::A(x) => Union::A((*x).clone()),
-            Union::B(x) => Union::B((*x).clone()),
-        }
-    }
-}
-
-pub trait ErrToUnion<T, E, U> {
-    fn err_to_union_a(self) -> Result<T, Union<E, U>>;
-
-    fn err_to_union_b(self) -> Result<T, Union<U, E>>;
-}
-
-impl<T, E, U> ErrToUnion<T, E, U> for Result<T, E> {
-    fn err_to_union_a(self) -> Result<T, Union<E, U>> {
-        self.map_err(|e| Union::A(e))
-    }
-
-    fn err_to_union_b(self) -> Result<T, Union<U, E>> {
-        self.map_err(|e| Union::B(e))
     }
 }

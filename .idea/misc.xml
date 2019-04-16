@@ -3,6 +3,9 @@
   <component name="CargoProjects">
     <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
   </component>
+  <component name="MacroExpansionManager">
+    <option name="directoryName" value="JHlvSSLx" />
+  </component>
   <component name="ProjectInspectionProfilesVisibleTreeState">
     <entry key="Project Default">
       <profile-state>
@@ -116,5 +119,6 @@
   <component name="RustProjectSettings">
     <option name="runExternalLinterOnTheFly" value="true" />
     <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
+    <option name="version" value="2" />
   </component>
 </project>

@@ -2,9 +2,9 @@
 ///
 /// Example:
 /// ```
-/// use tlib2::hashmap;
-/// use std::collections::HashMap;
 ///
+/// # use tlib::hashmap;
+/// # use std::collections::HashMap;
 /// let hm = hashmap!(
 ///     0 => 1,
 ///     1 => 2,

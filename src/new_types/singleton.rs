@@ -1,4 +1,6 @@
 /// A type that can only be initialized once
+///
+/// Intended for use with `static mut`
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Singleton<T> {
     inner: Option<T>
@@ -49,6 +51,7 @@ impl<T> Singleton<T> {
     }
 
     /// Moves the value v out of the `Singleton<T>` if it is initialized.
+    ///
     /// # Panics
     ///
     /// Panics if the value is not initialized.
@@ -58,7 +61,21 @@ impl<T> Singleton<T> {
         self.inner.unwrap()
     }
 
+    /// Moves the value v out of the `Singleton<T>` if it is initialized.
+     ///
+     /// # Panics
+     ///
+     /// Panics if the value is not initialized with a custom panic message provided by `msg`.
+    pub fn expect(self, msg: &str) -> T {
+        if !self.is_initialized() {
+            panic!("{}", msg);
+        }
+        //          ↓↓↓ this cannot fail
+        self.inner.unwrap()
+    }
+
     /// Returns a reference to the value v of the `Singleton<T>` if it is initialized.
+    ///
     /// # Panics
     ///
     /// Panics if the value is not initialized.
@@ -82,8 +99,36 @@ impl<T> Singleton<T> {
         }
     }
 
+    /// Converts from Singleton<T> to Singleton<&T>
+    pub fn as_ref(&self) -> Singleton<&T> {
+        Singleton { inner: self.inner.as_ref() }
+    }
+
+    /// Converts from Singleton<T> to Singleton<&mut T>
+    pub fn as_mut(&mut self) -> Singleton<&mut T> {
+        Singleton { inner: self.inner.as_mut() }
+    }
+
     /// works analogous to [`Option::map`](https://doc.rust-lang.org/std/option/enum.Option.html#method.map)
     pub fn map<F: FnMut(T) -> U, U>(self, f: F) -> Singleton<U> {
         Singleton { inner: self.inner.map(f) }
+    }
+
+    /// works like [`map`](#method.map) but modifies `self` instead of returning a new value.
+    pub fn map_inplace<F: FnMut(T) -> T>(&mut self, mut f: F) {
+        let inner = match self.inner.take() {
+            Some(t) => Some(f(t)),
+            None => None
+        };
+        self.inner = inner;
+    }
+}
+
+impl<T: Clone> Singleton<&T> {
+    /// Maps a `Singleton<&T>` to a `Singleton<T>` by cloning the contents of the singleton.
+    pub fn cloned(&self) -> Singleton<T> {
+        Singleton {
+            inner: self.inner.cloned()
+        }
     }
 }
