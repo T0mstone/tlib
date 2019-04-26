@@ -46,6 +46,7 @@ macro_rules! crate_version {
 /// Simplifies conditional compilation
 /// # Example
 /// ```no_run
+/// # use tlib::cfg_switch;
 /// cfg_switch! {
 ///     case unix: {
 ///         // a
@@ -56,7 +57,7 @@ macro_rules! crate_version {
 ///     case feature = "foo": {
 ///         // c
 ///     }
-///     default {
+///     default: {
 ///         // d
 ///     }
 /// }
