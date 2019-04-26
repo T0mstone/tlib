@@ -2,8 +2,26 @@ use std::ops::Deref;
 
 /// A type that can only be initialized once
 ///
-/// Intended for use with `static mut`
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+/// Intended for use with `static mut` and with types you only ever need once (e.g. a Context or a Logger)
+///
+/// # Example
+/// ```no_run
+/// # use tlib::Singleton;
+/// # struct Logger;
+/// # impl Logger {
+/// #     pub fn new() -> Self { Logger }
+/// # }
+/// static mut LOGGER: Singleton<Logger> = Singleton::new();
+///
+/// pub fn init() {
+///     unsafe {
+///         LOGGER.init(Logger::new());
+///     }
+/// }
+///
+/// // ...
+/// ```
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Singleton<T> {
     inner: Option<T>,
 }

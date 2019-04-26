@@ -18,12 +18,12 @@
 /// ```
 #[macro_export]
 macro_rules! hashmap(
-    { $($key:expr => $value:expr),+ } => {
+    { $($key:expr => $value:expr),* } => {
         {
-            let mut m = std::collections::HashMap::new();
+            let mut m = ::std::collections::HashMap::new();
             $(
                 m.insert($key, $value);
-            )+
+            )*
             m
         }
      };
@@ -40,5 +40,62 @@ macro_rules! crate_version {
             env!("CARGO_PKG_VERSION_PATCH"),
             option_env!("CARGO_PKG_VERSION_PRE").unwrap_or("")
         )
+    };
+}
+
+/// Simplifies conditional compilation
+/// # Example
+/// ```no_run
+/// cfg_switch! {
+///     case unix: {
+///         // a
+///     }
+///     case target_os = "windows": {
+///         // b
+///     }
+///     case feature = "foo": {
+///         // c
+///     }
+///     default {
+///         // d
+///     }
+/// }
+/// ```
+///
+/// expands to
+///
+/// ```no_run
+/// #[cfg(unix)]
+/// {
+///     // a
+/// }
+/// #[cfg(target_os = "windows")]
+/// {
+///     // b
+/// }
+/// #[cfg(feature = "foo")]
+/// {
+///     // c
+/// }
+/// #[cfg(not(any(
+///     unix,
+///     target_os = "windows",
+///     feature  = "foo"
+/// )))]
+/// {
+///     // d
+/// }
+/// ```
+///
+#[macro_export]
+macro_rules! cfg_switch {
+    (default: $def:block) => { $def };
+    ($(case $a:meta: $b:block)+ default: $def:block) => {
+        $(
+            #[cfg($a)]
+            $b
+        )+
+        #[cfg(not(any($($a),+)))]
+        $def
     };
 }

@@ -2,11 +2,12 @@
 //!
 //! This crate is very lightweight and has no dependencies or cargo features
 
+mod either;
 mod macros;
 mod singleton;
-mod union;
 
-pub mod vec;
+/// Some usefule Functions for converting between tuples of `Vec`s and `Vec`s of tuples
+pub mod vec_zip;
 
+pub use either::Either;
 pub use singleton::Singleton;
-pub use union::Union;
