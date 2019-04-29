@@ -1,3 +1,6 @@
+#[cfg(feature = "no_std")]
+use core as std;
+
 use std::ops::Deref;
 
 /// A type that can only be initialized once
@@ -5,12 +8,7 @@ use std::ops::Deref;
 /// Intended for use with `static mut` and with types you only ever need once (e.g. a Context or a Logger)
 ///
 /// # Example
-/// ```no_run
-/// # use tlib::Singleton;
-/// # struct Logger;
-/// # impl Logger {
-/// #     pub fn new() -> Self { Logger }
-/// # }
+/// ```ignore
 /// static mut LOGGER: Singleton<Logger> = Singleton::new();
 ///
 /// pub fn init() {

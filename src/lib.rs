@@ -1,13 +1,23 @@
 //! A collection of some useful tools (functions, types, traits, macros).
 //!
-//! This crate is very lightweight and has no dependencies or cargo features
+//! **Crate Features:**
+//!
+//! - `either` (enabled by default): enables the `either` crate
+//! - `either_use_std`: enables the `use_std` feature of the `either` crate
+//! - `no_std`: enables no_std compatibility, removing the `vec_zip` module and the `hashmap` macro
 
-mod either;
+#![cfg_attr(feature = "no_std", no_std)]
+
+#[cfg(all(feature = "no_std", feature = "either_use_std"))]
+compile_error!("The features \"no_std\" and \"either_use_std\" are mutually exclusive");
+
 mod macros;
 mod singleton;
 
 /// Some usefule Functions for converting between tuples of `Vec`s and `Vec`s of tuples
+#[cfg(not(feature = "no_std"))]
 pub mod vec_zip;
 
-pub use either::Either;
+#[cfg(feature = "either")]
+pub use either::{self, Either};
 pub use singleton::Singleton;

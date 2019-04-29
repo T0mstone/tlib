@@ -5,8 +5,8 @@ pub fn zip<T, U>(a: Vec<T>, b: Vec<U>) -> Vec<(T, U)> {
 
 /// Converts `Vec<(T, U)>` to `(Vec<T>, Vec<U>)`
 pub fn unzip<T, U>(v: Vec<(T, U)>) -> (Vec<T>, Vec<U>) {
-    let mut a = vec![];
-    let mut b = vec![];
+    let mut a = Vec::new();
+    let mut b = Vec::new();
     for (x, y) in v {
         a.push(x);
         b.push(y);

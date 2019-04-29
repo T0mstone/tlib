@@ -16,11 +16,13 @@
 /// control.insert(2, 3);
 /// assert_eq!(hm, control);
 /// ```
+#[cfg(not(feature = "no_std"))]
 #[macro_export]
 macro_rules! hashmap(
     { $($key:expr => $value:expr),* } => {
         {
-            let mut m = ::std::collections::HashMap::new();
+            let n = [$($key),*].len();
+            let mut m = ::std::collections::HashMap::with_capacity(n);
             $(
                 m.insert($key, $value);
             )*
@@ -33,12 +35,12 @@ macro_rules! hashmap(
 #[macro_export]
 macro_rules! crate_version {
     () => {
-        format!(
+        ::std::format!(
             "{}.{}.{}{}",
-            env!("CARGO_PKG_VERSION_MAJOR"),
-            env!("CARGO_PKG_VERSION_MINOR"),
-            env!("CARGO_PKG_VERSION_PATCH"),
-            option_env!("CARGO_PKG_VERSION_PRE").unwrap_or("")
+            ::std::env!("CARGO_PKG_VERSION_MAJOR"),
+            ::std::env!("CARGO_PKG_VERSION_MINOR"),
+            ::std::env!("CARGO_PKG_VERSION_PATCH"),
+            ::std::option_env!("CARGO_PKG_VERSION_PRE").unwrap_or("")
         )
     };
 }
