@@ -89,7 +89,6 @@ macro_rules! crate_version {
 ///     // d
 /// }
 /// ```
-///
 #[macro_export]
 macro_rules! cfg_switch {
     (default: $def:block) => { $def };
