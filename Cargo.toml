@@ -1,14 +1,15 @@
 [package]
 name = "tlib"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["T0mstone <realt0mstone@gmail.com>"]
 edition = "2018"
 
 [dependencies]
 either = { version = "1.5.2", optional = true }
+cfg-if = { version = "0.1.7", optional = true }
 
 [features]
-default = ["either"]
+default = ["either", "cfg-if"]
 
 no_std = []
 either_use_std = ["either/use_std"]

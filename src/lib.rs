@@ -2,7 +2,8 @@
 //!
 //! **Crate Features:**
 //!
-//! - `either` (enabled by default): enables the `either` crate
+//! - `cfg-if` (enabled by default): enables the `cfg-if` crate and re-exports its `cfg_if` macro
+//! - `either` (enabled by default): enables the `either` crate and re-exports it and its `Either` type
 //! - `either_use_std`: enables the `use_std` feature of the `either` crate
 //! - `no_std`: enables no_std compatibility, removing the `vec_zip` module and the `hashmap` macro
 
@@ -18,6 +19,8 @@ mod singleton;
 #[cfg(not(feature = "no_std"))]
 pub mod vec_zip;
 
+#[cfg(feature = "cfg-if")]
+pub use cfg_if::cfg_if;
 #[cfg(feature = "either")]
 pub use either::{self, Either};
 pub use singleton::Singleton;
