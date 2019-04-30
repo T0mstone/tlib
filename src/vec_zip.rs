@@ -35,3 +35,85 @@ impl<T, U> VecUnzipTrait<T, U> for Vec<(T, U)> {
         unzip(self)
     }
 }
+
+// Some helper macros to make writing the zip functions way less painful
+macro_rules! __flatten1 {
+    ($first:ident; $($bind:ident),*) => {
+        |($first, ($($bind),*))| ($first, $($bind),*)
+    };
+}
+
+macro_rules! flatten_tuple_fn {
+    ($a:ident, $b:ident, $c:ident) => {
+        __flatten1!($a; $b, $c)
+    };
+    ($first:ident $(,$bind:ident)*) => {
+        |(x, tup)| {
+            let f1 = flatten_tuple_fn!($($bind),*);
+            let flat = f1(tup);
+            let f2 = __flatten1!($first; $($bind),*);
+            f2((x, flat))
+        }
+    }
+}
+
+macro_rules! zip_rec {
+    ($a:ident, $b:ident) => {
+        $a.into_iter().zip($b.into_iter())
+    };
+    ($head:ident $(, $tail:ident)*) => {
+        $head.into_iter().zip(zip_rec!($($tail),*))
+    };
+}
+
+macro_rules! gen_zip_fns {
+    ($($fname:ident => $($binding:ident @ $param:ident: $t:ident),*;)*) => {
+        $(pub fn $fname<$($t),*>($($param: Vec<$t>),*) -> Vec<($($t),*)> {
+            zip_rec!($($param),*).map(flatten_tuple_fn!($($binding),*)).collect()
+        })*
+    };
+}
+
+// TODO: unzip functions up to 10 + add traits for these
+
+gen_zip_fns! {
+    zip3 => t1 @ a: A, t2 @ b: B, t3 @ c: C;
+    zip4 => t1 @ a: A, t2 @ b: B, t3 @ c: C, t4 @ d: D;
+    zip5 => t1 @ a: A, t2 @ b: B, t3 @ c: C, t4 @ d: D, t5 @ e: E;
+    zip6 => t1 @ a: A, t2 @ b: B, t3 @ c: C, t4 @ d: D, t5 @ e: E, t6 @ f: F;
+    zip7 => t1 @ a: A, t2 @ b: B, t3 @ c: C, t4 @ d: D, t5 @ e: E, t6 @ f: F, t7 @ g: G;
+    zip8 => t1 @ a: A, t2 @ b: B, t3 @ c: C, t4 @ d: D, t5 @ e: E, t6 @ f: F, t7 @ g: G, t8 @ h: H;
+    zip9 => t1 @ a: A, t2 @ b: B, t3 @ c: C, t4 @ d: D, t5 @ e: E, t6 @ f: F, t7 @ g: G, t8 @ h: H, t9 @ i: I;
+    zip10 => t1 @ a: A, t2 @ b: B, t3 @ c: C, t4 @ d: D, t5 @ e: E, t6 @ f: F, t7 @ g: G, t8 @ h: H, t9 @ i: I, t10 @ j: J;
+}
+
+#[cfg(test)]
+mod test {
+    use super::zip10;
+
+    macro_rules! vecs {
+        ($($a:literal, $b:literal),*) => {
+            (
+                $(
+                    vec![$a, $b]
+                ),*
+            )
+        };
+    }
+
+    #[test]
+    fn test_zip10() {
+        let (a, b, c, d, e, f, g, h, i, j) =
+            vecs![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+
+        let v = zip10(a, b, c, d, e, f, g, h, i, j);
+
+        assert_eq!(
+            vec![
+                (0, 2, 4, 6, 8, 10, 12, 14, 16, 18),
+                (1, 3, 5, 7, 9, 11, 13, 15, 17, 19)
+            ],
+            v
+        );
+    }
+}
