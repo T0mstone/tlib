@@ -15,6 +15,8 @@ compile_error!("The features \"no_std\" and \"either_use_std\" are mutually excl
 mod macros;
 mod singleton;
 
+/// Bézier interpolation functions (for more info, [click here](https://en.wikipedia.org/wiki/B%C3%A9zier_curve))
+pub mod interpolation;
 /// Some usefule Functions for converting between tuples of `Vec`s and `Vec`s of tuples
 #[cfg(not(feature = "no_std"))]
 pub mod vec_zip;
