@@ -1,30 +1,104 @@
 #[cfg(feature = "no_std")]
 use core as std;
 
-use std::ops::{Add, Mul};
+use std::ops::{Add, Mul, Sub};
+
+/// A trait used by the various interpolation functions as a trait bound for the `t` parameter
+pub trait One {
+    fn one() -> Self;
+}
+
+/// This trait is not indended to be implemented outside this crate itself
+pub trait OneExt: One {
+    fn n(n: usize) -> Self
+    where
+        Self: Add<Output = Self> + Sized,
+    {
+        let mut res = Self::one();
+        for _ in 0..n - 1 {
+            res = res + Self::one()
+        }
+        res
+    }
+
+    fn one_minus(&self) -> Self
+    where
+        Self: Sub<Output = Self> + Clone,
+    {
+        Self::one() - self.clone()
+    }
+
+    fn mul(self, n: usize) -> Self
+    where
+        Self: Add<Output = Self> + Clone,
+    {
+        let mut res = self.clone();
+        for _ in 0..n - 1 {
+            res = res + self.clone()
+        }
+        res
+    }
+
+    fn pow(&self, n: usize) -> Self
+    where
+        Self: Mul<Output = Self> + Clone,
+    {
+        (0..n).fold(Self::one(), |res, _| res * self.clone())
+    }
+}
+
+impl<T: One> OneExt for T {}
+
+macro_rules! impl_one_trait {
+    ($($t:ty),*) => {
+        $(
+            impl One for $t {
+                fn one() -> Self {
+                    1 as $t
+                }
+            }
+        )*
+    };
+}
+
+impl_one_trait! {
+    u8, u16, u32, u64, usize,
+    i8, i16, i32, i64, isize,
+    f32, f64
+}
 
 /// Linear interpolation
 #[inline]
-pub fn lerp<T: Add<Output = T> + Mul<f64, Output = T>>(a: T, b: T, t: f64) -> T {
-    a * (1.0 - t) + b * t
+pub fn lerp<P, T>(a: P, b: P, t: T) -> P
+where
+    P: Add<Output = P> + Mul<T, Output = P>,
+    T: OneExt + Sub<Output = T> + Clone,
+{
+    a * t.one_minus() + b * t
 }
 
 /// Quadratic bézier interpolation
 #[inline]
-pub fn qbez<T: Add<Output = T> + Mul<f64, Output = T>>(a: T, b: T, c: T, t: f64) -> T {
-    let u = 1.0 - t;
-    a * (u * u) + b * (2.0 * u * t) + c * (t * t)
+pub fn qbez<P, T>(a: P, b: P, c: P, t: T) -> P
+where
+    P: Add<Output = P> + Mul<T, Output = P>,
+    T: OneExt + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Clone,
+{
+    let u = t.one_minus();
+    let t2 = t.pow(2);
+    a * u.pow(2) + b * (T::n(2) * u * t) + c * t2
 }
 
 /// Cubic bézier interpolation
 #[inline]
-#[rustfmt::skip]
-pub fn cubez<T: Add<Output = T> + Mul<f64, Output = T>>(a: T, b: T, c: T, d: T, t: f64) -> T {
-    let u = 1.0 - t;
-    a * (u * u * u)
-        + b * (3.0 * u * u * t)
-        + c * (3.0 * u * t * t)
-        + d * (t * t * t)
+pub fn cubez<P, T>(a: P, b: P, c: P, d: P, t: T) -> P
+where
+    P: Add<Output = P> + Mul<T, Output = P>,
+    T: OneExt + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Clone,
+{
+    let u = t.one_minus();
+    let (t2, t3) = (t.pow(2), t.pow(3));
+    a * u.pow(3) + b * (T::n(3) * u.pow(2) * t) + c * (T::n(3) * u * t2) + d * t3
 }
 
 /// Computes the binomial coefficient (nCk)
@@ -49,11 +123,13 @@ fn choose(n: usize, k: usize) -> usize {
     }
 }
 
+#[cfg(not(feature = "no_std"))]
 /// Bézier interpolation of any degree (greater than 0)
-pub fn bez<T: Add<Output = T> + Mul<f64, Output = T>>(
-    mut pts: Vec<T>,
-    t: f64,
-) -> Result<T, &'static str> {
+pub fn bez<P, T>(mut pts: Vec<P>, t: T) -> Result<P, &'static str>
+where
+    P: Add<Output = P> + Mul<T, Output = P>,
+    T: OneExt + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Clone,
+{
     match pts.len() {
         0 => Err("no points given"),
         1 => Ok(pts.pop().unwrap()),
@@ -77,14 +153,15 @@ pub fn bez<T: Add<Output = T> + Mul<f64, Output = T>>(
         }
         l => {
             let n = l - 1;
-            let u = 1.0 - t;
+            let u = t.one_minus();
 
             let last = pts.pop().unwrap();
-            let mut res = last * t.powi(n as i32);
+            let mut res = last * t.pow(n);
 
             let mut k = 0;
             for p in pts {
-                let mul = choose(n, k) as f64 * u.powi((n - k) as i32) * t.powi(k as i32);
+                let c = choose(n, k);
+                let mul = OneExt::mul(u.pow(n - k) * t.pow(k), c);
                 res = res + p * mul;
                 k += 1;
             }
@@ -96,7 +173,6 @@ pub fn bez<T: Add<Output = T> + Mul<f64, Output = T>>(
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::ops::Sub;
 
     #[derive(Debug, Copy, Clone, PartialEq)]
     struct Point {
