@@ -1,6 +1,6 @@
 [package]
 name = "tlib"
-version = "0.5.2"
+version = "0.5.3"
 authors = ["T0mstone <realt0mstone@gmail.com>"]
 edition = "2018"
 
