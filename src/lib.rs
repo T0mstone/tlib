@@ -4,7 +4,7 @@
 //!
 //! - `cfg-if` (enabled by default): enables the [`cfg-if`](https://docs.rs/cfg-if/0.1.7/cfg_if/) crate and re-exports its `cfg_if` macro (which somehow appears as if it were declared in this crate)
 //! - `either` (enabled by default): enables the [`either`](https://docs.rs/either/1.5.2/either/) crate and re-exports it and its `Either` type (which somehow appears as if it were declared in this crate)
-//! - `either_use_std`: enables the `use_std` feature of the `either` crate
+//! - `either_with_std`: enables the `use_std` feature of the `either` crate (and enables the `either` crate if that isn't already enabled)
 //! - `no_std`: enables no_std compatibility, removing the `vec_zip` module, the `hashmap` macro and the `interpolation::bez` function
 
 #![cfg_attr(feature = "no_std", no_std)]
