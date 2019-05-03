@@ -1,3 +1,4 @@
+#![allow(unused_macros)]
 /// Converts `(Vec<T>, Vec<U>)` to `Vec<(T, U)>`
 pub fn zip<T, U>(a: Vec<T>, b: Vec<U>) -> Vec<(T, U)> {
     a.into_iter().zip(b.into_iter()).collect()
@@ -66,25 +67,38 @@ macro_rules! zip_rec {
     };
 }
 
-macro_rules! gen_zip_fns {
-    ($($fname:ident => $($binding:ident @ $param:ident: $t:ident),*;)*) => {
-        $(pub fn $fname<$($t),*>($($param: Vec<$t>),*) -> Vec<($($t),*)> {
+macro_rules! gen_zip_fn {
+    ($fname:ident => $($binding:ident @ $param:ident: $t:ident),*) => {
+        pub fn $fname<$($t),*>($($param: Vec<$t>),*) -> Vec<($($t),*)> {
             zip_rec!($($param),*).map(flatten_tuple_fn!($($binding),*)).collect()
-        })*
+        }
+    };
+}
+
+macro_rules! gen_zip_fns_accum {
+    ($fname:ident => $($binding:ident @ $param:ident: $t:ident),*; $($fname2:ident => $($binding2:ident @ $param2:ident: $t2:ident),*;)*) => {
+        gen_zip_fns_accum!([] $fname => $($binding @ $param: $t),*; $($fname2 => $($binding2 @ $param2: $t2),*;)*);
+    };
+    ([$($binding1:ident @ $param1:ident: $t1:ident,)*] $fname:ident => $($binding:ident @ $param:ident: $t:ident),*;) => {
+        gen_zip_fn!($fname => $($binding1 @ $param1: $t1,)* $($binding @ $param: $t),*);
+    };
+    ([$($binding1:ident @ $param1:ident: $t1:ident,)*] $fname:ident => $($binding:ident @ $param:ident: $t:ident),*; $($fname2:ident => $($binding2:ident @ $param2:ident: $t2:ident),*;)*) => {
+        gen_zip_fn!($fname => $($binding1 @ $param1: $t1,)* $($binding @ $param: $t),*);
+        gen_zip_fns_accum!([$($binding1 @ $param1: $t1,)* $($binding @ $param: $t,)*] $($fname2 => $($binding2 @ $param2: $t2),*;)*);
     };
 }
 
 // TODO: unzip functions up to 10 + add traits for these
 
-gen_zip_fns! {
+gen_zip_fns_accum! {
     zip3 => t1 @ a: A, t2 @ b: B, t3 @ c: C;
-    zip4 => t1 @ a: A, t2 @ b: B, t3 @ c: C, t4 @ d: D;
-    zip5 => t1 @ a: A, t2 @ b: B, t3 @ c: C, t4 @ d: D, t5 @ e: E;
-    zip6 => t1 @ a: A, t2 @ b: B, t3 @ c: C, t4 @ d: D, t5 @ e: E, t6 @ f: F;
-    zip7 => t1 @ a: A, t2 @ b: B, t3 @ c: C, t4 @ d: D, t5 @ e: E, t6 @ f: F, t7 @ g: G;
-    zip8 => t1 @ a: A, t2 @ b: B, t3 @ c: C, t4 @ d: D, t5 @ e: E, t6 @ f: F, t7 @ g: G, t8 @ h: H;
-    zip9 => t1 @ a: A, t2 @ b: B, t3 @ c: C, t4 @ d: D, t5 @ e: E, t6 @ f: F, t7 @ g: G, t8 @ h: H, t9 @ i: I;
-    zip10 => t1 @ a: A, t2 @ b: B, t3 @ c: C, t4 @ d: D, t5 @ e: E, t6 @ f: F, t7 @ g: G, t8 @ h: H, t9 @ i: I, t10 @ j: J;
+    zip4 => t4 @ d: D;
+    zip5 => t5 @ e: E;
+    zip6 => t6 @ f: F;
+    zip7 => t7 @ g: G;
+    zip8 => t8 @ h: H;
+    zip9 => t9 @ i: I;
+    zip10 => t10 @ j: J;
 }
 
 #[cfg(test)]
