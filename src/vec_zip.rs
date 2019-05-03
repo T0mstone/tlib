@@ -1,11 +1,10 @@
-#![allow(unused_macros)]
-/// Converts `(Vec<T>, Vec<U>)` to `Vec<(T, U)>`
-pub fn zip<T, U>(a: Vec<T>, b: Vec<U>) -> Vec<(T, U)> {
+/// Generates a new `Vec` out of several `Vec`s, where each new element is a tuple of the previous `Vec`s' elements at that index
+pub fn zip<A, B>(a: Vec<A>, b: Vec<B>) -> Vec<(A, B)> {
     a.into_iter().zip(b.into_iter()).collect()
 }
 
-/// Converts `Vec<(T, U)>` to `(Vec<T>, Vec<U>)`
-pub fn unzip<T, U>(v: Vec<(T, U)>) -> (Vec<T>, Vec<U>) {
+/// Generates several `Vec`s out of a `Vec` (where each element is a tuple), splitting the tuple elements all into single types
+pub fn unzip<A, B>(v: Vec<(A, B)>) -> (Vec<A>, Vec<B>) {
     let mut a = Vec::new();
     let mut b = Vec::new();
     for (t1, t2) in v {
@@ -36,6 +35,8 @@ impl<T, U> VecUnzipTrait<T, U> for Vec<(T, U)> {
         unzip(self)
     }
 }
+
+// note: maybe consider adding traits for the other numbers?
 
 // Macros for generating the zip functions
 macro_rules! __flatten1 {
@@ -69,29 +70,18 @@ macro_rules! zip_rec {
 
 macro_rules! gen_zip_fn {
     ($fname:ident => $($binding:ident @ $param:ident: $t:ident),*) => {
+        /// Like [`zip`](#function.zip) but with more `Vec`s
         pub fn $fname<$($t),*>($($param: Vec<$t>),*) -> Vec<($($t),*)> {
             zip_rec!($($param),*).map(flatten_tuple_fn!($($binding),*)).collect()
         }
     };
 }
 
-macro_rules! gen_zip_fns_accum {
-    ($fname:ident => $($binding:ident @ $param:ident: $t:ident),*; $($fname2:ident => $($binding2:ident @ $param2:ident: $t2:ident),*;)*) => {
-        gen_zip_fns_accum!([] $fname => $($binding @ $param: $t),*; $($fname2 => $($binding2 @ $param2: $t2),*;)*);
-    };
-    ([$($binding1:ident @ $param1:ident: $t1:ident,)*] $fname:ident => $($binding:ident @ $param:ident: $t:ident),*;) => {
-        gen_zip_fn!($fname => $($binding1 @ $param1: $t1,)* $($binding @ $param: $t),*);
-    };
-    ([$($binding1:ident @ $param1:ident: $t1:ident,)*] $fname:ident => $($binding:ident @ $param:ident: $t:ident),*; $($fname2:ident => $($binding2:ident @ $param2:ident: $t2:ident),*;)*) => {
-        gen_zip_fn!($fname => $($binding1 @ $param1: $t1,)* $($binding @ $param: $t),*);
-        gen_zip_fns_accum!([$($binding1 @ $param1: $t1,)* $($binding @ $param: $t,)*] $($fname2 => $($binding2 @ $param2: $t2),*;)*);
-    };
-}
-
-// Macros for generating the unzip functions
+// Macro for generating the unzip functions
 
 macro_rules! gen_unzip_fn {
     ($fname:ident => $($binding:ident @ $vname:ident: $t:ident),*) => {
+        /// Like [`unzip`](#function.unzip) but with more `Vec`s
         pub fn $fname<$($t),*>(v: Vec<($($t),*)>) -> ($(Vec<$t>),*) {
             $(
                 let mut $vname = Vec::new();
@@ -103,19 +93,6 @@ macro_rules! gen_unzip_fn {
             }
             ($($vname),*)
         }
-    };
-}
-
-macro_rules! gen_unzip_fns_accum {
-    ($fname:ident => $($binding:ident @ $vname:ident: $t:ident),*; $($fname2:ident => $($binding2:ident @ $vname2:ident: $t2:ident),*;)*) => {
-        gen_unzip_fns_accum!([] $fname => $($binding @ $vname: $t),*; $($fname2 => $($binding2 @ $vname2: $t2),*;)*);
-    };
-    ([$($binding1:ident @ $vname1:ident: $t1:ident,)*] $fname:ident => $($binding:ident @ $vname:ident: $t:ident),*;) => {
-        gen_unzip_fn!($fname => $($binding1 @ $vname1: $t1,)* $($binding @ $vname: $t),*);
-    };
-    ([$($binding1:ident @ $vname1:ident: $t1:ident,)*] $fname:ident => $($binding:ident @ $vname:ident: $t:ident),*; $($fname2:ident => $($binding2:ident @ $vname2:ident: $t2:ident),*;)*) => {
-        gen_unzip_fn!($fname => $($binding1 @ $vname1: $t1,)* $($binding @ $vname: $t),*);
-        gen_unzip_fns_accum!([$($binding1 @ $vname1: $t1,)* $($binding @ $vname: $t,)*] $($fname2 => $($binding2 @ $vname2: $t2),*;)*);
     };
 }
 
