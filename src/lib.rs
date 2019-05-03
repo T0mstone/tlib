@@ -9,8 +9,8 @@
 
 #![cfg_attr(feature = "no_std", no_std)]
 
-#[cfg(all(feature = "no_std", feature = "either_use_std"))]
-compile_error!("The features \"no_std\" and \"either_use_std\" are mutually exclusive");
+#[cfg(all(feature = "no_std", feature = "either_with_std"))]
+compile_error!("The features \"no_std\" and \"either_with_std\" are mutually exclusive");
 
 mod macros;
 mod singleton;
