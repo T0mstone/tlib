@@ -8,8 +8,18 @@ edition = "2018"
 either = { version = "1.5.2", optional = true }
 cfg-if = { version = "0.1.7", optional = true }
 
-[features]
-default = ["either", "cfg-if"]
+[build-dependencies]
+once_cell = "0.2.1"
 
-no_std = []
-either_with_std = ["either/use_std"]
+[features]
+default = ["either", "cfg-if", "tuple_tools"]
+
+use_std = []
+either_use_std = ["use_std", "either/use_std"]
+tuple_tools = []
+tuple_tools_a2 = ["tuple_tools"]
+tuple_tools_b2 = ["tuple_tools_a2"]
+tuple_tools_c2 = ["tuple_tools_b2"]
+tuple_tools_d2 = ["tuple_tools_c2"]
+tuple_tools_all = ["tuple_tools_d2"]
+

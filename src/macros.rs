@@ -19,7 +19,7 @@
 #[cfg(not(feature = "no_std"))]
 #[macro_export]
 macro_rules! hashmap(
-    { $($key:expr => $value:expr),* } => {
+    ( $($key:expr => $value:expr),* ) => {
         {
             let n = [$($key),*].len();
             let mut m = std::collections::HashMap::with_capacity(n);

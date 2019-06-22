@@ -5,13 +5,7 @@ pub fn zip<A, B>(a: Vec<A>, b: Vec<B>) -> Vec<(A, B)> {
 
 /// Generates several `Vec`s out of a `Vec` (where each element is a tuple), splitting the tuple elements all into single types
 pub fn unzip<A, B>(v: Vec<(A, B)>) -> (Vec<A>, Vec<B>) {
-    let mut a = Vec::new();
-    let mut b = Vec::new();
-    for (t1, t2) in v {
-        a.push(t1);
-        b.push(t2);
-    }
-    (a, b)
+    v.into_iter().unzip()
 }
 
 /// The same as the [`zip`](#function.zip) function but called as `Vec::zip`

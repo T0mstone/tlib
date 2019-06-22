@@ -1,4 +1,4 @@
-#[cfg(feature = "no_std")]
+#[cfg(not(feature = "use_std"))]
 use core as std;
 
 use std::ops::Deref;

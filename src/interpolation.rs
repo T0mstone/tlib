@@ -1,4 +1,4 @@
-#[cfg(feature = "no_std")]
+#[cfg(not(feature = "use_std"))]
 use core as std;
 
 use std::ops::{Add, Mul, Sub};
@@ -8,8 +8,15 @@ pub trait One {
     fn one() -> Self;
 }
 
+mod one_ext_seal {
+    pub trait Seal {}
+
+    impl<T: super::One> Seal for T {}
+}
+
 /// This trait is not indended to be implemented outside this crate itself
-pub trait OneExt: One {
+// sealed, so it cannot be implemented on its own
+pub trait OneExt: One + one_ext_seal::Seal {
     fn n(n: usize) -> Self
     where
         Self: Add<Output = Self> + Sized,
@@ -19,13 +26,6 @@ pub trait OneExt: One {
             res = res + Self::one()
         }
         res
-    }
-
-    fn one_minus(&self) -> Self
-    where
-        Self: Sub<Output = Self> + Clone,
-    {
-        Self::one() - self.clone()
     }
 
     fn mul(self, n: usize) -> Self
@@ -45,6 +45,11 @@ pub trait OneExt: One {
     {
         (0..n).fold(Self::one(), |res, _| res * self.clone())
     }
+}
+
+#[inline]
+fn one_minus<T: One + Sub<Output = T>>(t: T) -> T {
+    T::one() - t
 }
 
 impl<T: One> OneExt for T {}
@@ -74,7 +79,7 @@ where
     P: Add<Output = P> + Mul<T, Output = P>,
     T: OneExt + Sub<Output = T> + Clone,
 {
-    a * t.one_minus() + b * t
+    a * one_minus(t.clone()) + b * t
 }
 
 /// Quadratic bézier interpolation
@@ -84,7 +89,7 @@ where
     P: Add<Output = P> + Mul<T, Output = P>,
     T: OneExt + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Clone,
 {
-    let u = t.one_minus();
+    let u = one_minus(t.clone());
     let t2 = t.pow(2);
     a * u.pow(2) + b * (T::n(2) * u * t) + c * t2
 }
@@ -96,17 +101,16 @@ where
     P: Add<Output = P> + Mul<T, Output = P>,
     T: OneExt + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Clone,
 {
-    let u = t.one_minus();
+    let u = one_minus(t.clone());
     let (t2, t3) = (t.pow(2), t.pow(3));
     a * u.pow(3) + b * (T::n(3) * u.pow(2) * t) + c * (T::n(3) * u * t2) + d * t3
 }
 
+#[cfg(feature = "use_std")]
 /// Computes the binomial coefficient (nCk)
 fn choose(n: usize, k: usize) -> usize {
-    if k > n {
-        panic!("Called `choose(n, k)` but k was greater than n");
-    }
     let half = n / 2;
+    // this also does the checking for k > n bc if k > n then k > half and (n -k) < 0 => subtract with overflow
     let k = if k > half { n - k } else { k };
     if n == 0 || n == 1 || n == k || k == 0 {
         1
@@ -123,7 +127,7 @@ fn choose(n: usize, k: usize) -> usize {
     }
 }
 
-#[cfg(not(feature = "no_std"))]
+#[cfg(feature = "use_std")]
 /// Bézier interpolation of any degree (greater than 0)
 pub fn bez<P, T>(mut pts: Vec<P>, t: T) -> Result<P, &'static str>
 where
@@ -153,7 +157,7 @@ where
         }
         l => {
             let n = l - 1;
-            let u = t.one_minus();
+            let u = one_minus(t);
 
             let last = pts.pop().unwrap();
             let mut res = last * t.pow(n);
@@ -189,10 +193,6 @@ mod test {
         #[inline]
         pub fn newi(x: i32, y: i32) -> Self {
             Self::new(x as f64, y as f64)
-        }
-
-        pub(self) fn less_than(&self, x: f64, y: f64) -> bool {
-            self.x < x && self.y < y
         }
     }
 
@@ -260,6 +260,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "use_std")]
     fn test_nbez() {
         let a = Point::newi(5, 0);
         let b = Point::newi(17, -12);
