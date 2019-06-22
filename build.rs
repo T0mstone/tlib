@@ -3,10 +3,6 @@ use std::fs;
 use std::path::PathBuf;
 
 mod util {
-    use once_cell::sync::Lazy;
-    use std::borrow::Cow;
-    use std::ops::{Bound, RangeBounds};
-
     pub trait IterJoin<T>: Iterator<Item = T> + Sized
     where
         T: Clone,
@@ -18,154 +14,169 @@ mod util {
             Self::concat(tmp, c)
         }
 
-        fn join<U: Into<T>>(mut self, delim: U) -> Option<T> {
+        fn try_join<U: Into<T>>(mut self, delim: U) -> Option<T> {
             let delim = delim.into();
             let first = self.next()?;
             let val = self.fold(first, |acc, x| Self::concat_3(acc, delim.clone(), x));
             Some(val)
         }
+
+        fn join<U: Into<T>>(mut self, delim: U) -> T
+        where
+            T: Default,
+        {
+            self.try_join(delim).unwrap_or_default()
+        }
     }
 
     impl<I: Iterator<Item = String>> IterJoin<String> for I {
-        fn concat(a: String, b: String) -> String {
-            a + &b[..]
+        fn concat(_: String, _: String) -> String {
+            unimplemented!()
+        }
+
+        #[inline]
+        fn concat_3(a: String, b: String, c: String) -> String {
+            a + &b[..] + &c[..]
         }
     }
 
     impl<T: Clone, I: Iterator<Item = Vec<T>>> IterJoin<Vec<T>> for I {
-        fn concat(mut a: Vec<T>, b: Vec<T>) -> Vec<T> {
+        fn concat(_: Vec<T>, _: Vec<T>) -> Vec<T> {
+            unimplemented!()
+        }
+
+        #[inline]
+        fn concat_3(mut a: Vec<T>, b: Vec<T>, c: Vec<T>) -> Vec<T> {
             a.extend(b);
+            a.extend(c);
             a
         }
     }
 
-    pub trait MapBound: Sized {
-        type FInp;
-        fn map<U>(self, f: impl FnOnce(Self::FInp) -> U) -> Bound<U>;
+    fn letter(i: usize) -> char {
+        const ALPH: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        ALPH.chars().nth(i).unwrap()
     }
 
-    impl<T> MapBound for Bound<T> {
-        type FInp = T;
-
-        fn map<U>(self, f: impl FnOnce(T) -> U) -> Bound<U> {
-            match self {
-                Bound::Included(t) => Bound::Included(f(t)),
-                Bound::Excluded(t) => Bound::Excluded(f(t)),
-                Bound::Unbounded => Bound::Unbounded,
-            }
+    pub fn encode_base26(i: usize) -> String {
+        let low = i % 26;
+        let high = i / 26;
+        if high == 0 {
+            letter(low).to_string()
+        } else {
+            let mut res = encode_base26(high - 1);
+            res.push(letter(low));
+            res
         }
     }
 
-    pub fn char_range<R: RangeBounds<char>>(cr: R) -> Vec<char> {
-        let b1 = cr.start_bound().map(|&c| c as u8);
-        let b2 = cr.end_bound().map(|&c| c as u8);
-        let u1 = match b1 {
-            Bound::Unbounded => 0,
-            Bound::Included(u) => u,
-            Bound::Excluded(u) => u + 1,
-        };
-        let u2 = match b2 {
-            Bound::Unbounded => u8::max_value(),
-            Bound::Included(u) => u,
-            Bound::Excluded(u) if u != 0 => u - 1,
-            Bound::Excluded(0) => panic!("impossible bound"),
-            _ => unreachable!(),
-        };
-        (u1..=u2).map(|u| u as char).collect()
+    #[derive(Clone)]
+    pub struct IdentIter {
+        i: usize,
     }
 
-    pub static ALPH: Lazy<Cow<[char]>> = Lazy::new(|| Cow::from(char_range('A'..='Z')));
+    impl IdentIter {
+        pub const fn new() -> Self {
+            Self { i: 0 }
+        }
+    }
 
-    pub fn char_concat(c1: char, c2: char) -> String {
-        String::from_utf8(vec![c1 as u8, c2 as u8]).unwrap()
+    impl Iterator for IdentIter {
+        type Item = String;
+
+        fn next(&mut self) -> Option<String> {
+            self.i += 1;
+            Some(encode_base26(self.i - 1))
+        }
+    }
+
+    pub struct Accum<I: IntoIterator> {
+        iter: I,
+        len: usize,
+    }
+
+    impl<I: IntoIterator> Accum<I> {
+        pub fn new(iter: I, len: usize) -> Self {
+            Self { iter, len }
+        }
+    }
+
+    impl<I: IntoIterator + Clone> Iterator for Accum<I> {
+        type Item = Vec<I::Item>;
+
+        fn next(&mut self) -> Option<Vec<I::Item>> {
+            let iter = self.iter.clone().into_iter();
+            let res: Vec<_> = iter.take(self.len).collect();
+
+            self.len += 1;
+
+            if res.len() + 1 != self.len {
+                None
+            } else {
+                Some(res)
+            }
+        }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            let i = &self.iter.clone().into_iter() as &dyn Iterator<Item = I::Item>;
+            i.size_hint()
+        }
     }
 }
 
 fn make_impl(types: &[String]) -> String {
     let head = types.get(0).expect("Vec too short");
     let tail = types.get(1..).expect("Vec too short");
-    let tail_cons = (1..types.len())
-        .map(|i| format!("self.{}", i))
-        .join(",")
-        .unwrap_or(String::new());
-    let tail_cons_2 = (0..tail.len())
-        .map(|i| format!("t.{}", i))
-        .join(",")
-        .unwrap_or(String::new());
+    let tail_cons = (1..types.len()).map(|i| format!("self.{}", i)).join(",");
+    let tail_cons_2 = (0..tail.len()).map(|i| format!("t.{}", i)).join(",");
+    let len = types.len();
 
     let types_s = types.join(",");
     let tail_s = tail.join(",");
 
     format!(
-        "impl<{0}> Tuple for ({0}) {{\
-         type Head = {1};\
-         type Tail = ({2});\
-         fn split_first(self) -> (Self::Head, Self::Tail) {{ (self.0, ({3})) }}\
-         fn construct(h: Self::Head, t: Self::Tail) -> Self {{ (h, {4}) }}\
+        "impl<{}, Aug> Tuple<Aug> for ({0}) {{\
+         type  Head = {};\
+         type  Tail = ({});\
+         type  Augmented = (Aug, {0});\
+         fn  split_first(self) -> (Self::Head, Self::Tail) {{ (self.0, ({})) }}\
+         fn  construct(h: Self::Head, t: Self::Tail) -> Self {{ (h, {}) }}\
+         fn  len() -> usize {{ {} }}\
          }}",
-        types_s, head, tail_s, tail_cons, tail_cons_2
+        types_s, head, tail_s, tail_cons, tail_cons_2, len
     )
+    // dummy character (keep double space)
+    .replace("  ", "§")
+    // remove spaces
+    .replace(" ", "")
+    // insert double spaces back (now as single spaces)
+    .replace("§", " ")
 }
 
-fn make_1char_all() -> String {
-    (3..=ALPH.len())
-        .map(|i| {
-            let slice: Vec<_> = ALPH[..i].iter().map(|c| c.to_string()).collect();
-            make_impl(&slice)
-        })
-        .join("\n")
-        .unwrap_or(String::new())
+fn make_filepath(from: usize, to: usize) -> PathBuf {
+    PathBuf::from(format!("src/tuple_tools/impl{}to{}.rs", from, to))
 }
 
-fn make_2char_types(c1: char) -> (Vec<String>, usize) {
-    let mut res: Vec<String> = ALPH.iter().map(|c| c.to_string()).collect();
-    // c1 is excluded
-    for c1t in char_range('A'..c1) {
-        let aug_alph = ALPH.iter().map(|c| char_concat(c1t, *c));
-        res.extend(aug_alph);
-    }
-    let first_len = res.len() + 1;
-    let aug_alph = ALPH.iter().map(|c| char_concat(c1, *c));
-    res.extend(aug_alph);
-    (res, first_len)
+fn make_range(from: usize, len: usize) -> String {
+    let iter = Accum::new(IdentIter::new(), 0).skip(from).take(len);
+    iter.map(|types| make_impl(&types)).join("\n")
 }
 
-fn make_2char_all(letter: char) -> String {
-    let (types, first_len) = make_2char_types(letter);
-    (first_len..=types.len())
-        .map(|len| {
-            let slice = &types[..len];
-            make_impl(slice)
-        })
-        .fold(String::new(), |acc, s| {
-            if acc.is_empty() {
-                s
-            } else {
-                format!("{}\n{}", acc, s)
-            }
-        })
-}
-
-#[inline]
-fn make_filepath(letter: char) -> PathBuf {
-    PathBuf::from(format!("src/tuple_tools/{}2.rs", letter))
-}
-
-fn make_file(content: String, path: PathBuf) -> std::io::Result<()> {
+fn write_file(content: String, path: PathBuf) {
     let content = format!("use crate::tuple_tools::Tuple;\n{}", content);
-    fs::write(path, content)?;
-    Ok(())
+    fs::write(path, content).expect("Failed to create file");
+}
+
+fn make_file(start: usize, len: usize) {
+    let content = make_range(start, len);
+    let path = make_filepath(start, start + len - 1);
+    write_file(content, path);
 }
 
 fn main() {
-    {
-        let content = make_1char_all();
-        let path = PathBuf::from("src/tuple_tools/base1.rs");
-        make_file(content, path).expect("failed to create file");
-    }
-    for c in char_range('A'..='D') {
-        let content = make_2char_all(c);
-        let path = make_filepath(c);
-        make_file(content, path).expect("failed to create file");
-    }
+    make_file(3, 23);
+    make_file(26, 25);
+    make_file(51, 50);
+    make_file(101, 50);
+    make_file(151, 50);
 }
