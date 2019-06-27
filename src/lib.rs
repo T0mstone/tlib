@@ -28,8 +28,8 @@ pub mod vec_zip;
 #[cfg(feature = "tuple_tools")]
 pub mod tuple_tools;
 
+pub use self::singleton::Singleton;
 #[cfg(feature = "cfg-if")]
 pub use cfg_if::cfg_if;
 #[cfg(feature = "either")]
 pub use either::{self, Either};
-pub use singleton::Singleton;

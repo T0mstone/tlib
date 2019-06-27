@@ -157,7 +157,7 @@ where
         }
         l => {
             let n = l - 1;
-            let u = one_minus(t);
+            let u = one_minus(t.clone());
 
             let last = pts.pop().unwrap();
             let mut res = last * t.pow(n);
@@ -193,6 +193,11 @@ mod test {
         #[inline]
         pub fn newi(x: i32, y: i32) -> Self {
             Self::new(x as f64, y as f64)
+        }
+
+        #[cfg(feature = "use_std")]
+        pub fn less_than(&self, x: f64, y: f64) -> bool {
+            self.x < x && self.y < y
         }
     }
 

@@ -21,7 +21,7 @@ mod util {
             Some(val)
         }
 
-        fn join<U: Into<T>>(mut self, delim: U) -> T
+        fn join<U: Into<T>>(self, delim: U) -> T
         where
             T: Default,
         {
