@@ -171,3 +171,12 @@ impl<T: Clone> Singleton<&T> {
         }
     }
 }
+
+impl<T: Copy> Singleton<&T> {
+    /// Maps a `Singleton<&T>` to a `Singleton<T>` by copying the contents of the singleton.
+    pub fn copied(&self) -> Singleton<T> {
+        Singleton {
+            inner: self.inner.copied(),
+        }
+    }
+}

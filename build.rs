@@ -139,11 +139,11 @@ fn make_impl(types: &[String]) -> String {
          type  Head = {};\
          type  Tail = ({});\
          type  Augmented = (Aug, {0});\
+         const  LEN: usize = {};\
          fn  split_first(self) -> (Self::Head, Self::Tail) {{ (self.0, ({})) }}\
          fn  construct(h: Self::Head, t: Self::Tail) -> Self {{ (h, {}) }}\
-         fn  len() -> usize {{ {} }}\
          }}",
-        types_s, head, tail_s, tail_cons, tail_cons_2, len
+        types_s, head, tail_s, len, tail_cons, tail_cons_2
     )
     // dummy character (keep double space)
     .replace("  ", "§")
@@ -179,4 +179,12 @@ fn main() {
     make_file(51, 50);
     make_file(101, 50);
     make_file(151, 50);
+
+    if let Ok(s) = std::env::var("PROFILE") {
+        match &s[..] {
+            "debug" => println!("cargo:rustc-cfg=profile_debug"),
+            "release" => println!("cargo:rustc-cfg=profile_release"),
+            _ => (),
+        }
+    }
 }

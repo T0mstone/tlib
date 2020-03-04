@@ -1,177 +1,291 @@
 #[cfg(not(feature = "use_std"))]
 use core as std;
 
+use num_traits::{One, Zero};
+
 use std::ops::{Add, Mul, Sub};
-
-/// A trait used by the various interpolation functions as a trait bound for the `t` parameter
-pub trait One {
-    fn one() -> Self;
-}
-
-mod one_ext_seal {
-    pub trait Seal {}
-
-    impl<T: super::One> Seal for T {}
-}
-
-/// This trait is not indended to be implemented outside this crate itself
-// sealed, so it cannot be implemented on its own
-pub trait OneExt: One + one_ext_seal::Seal {
-    fn n(n: usize) -> Self
-    where
-        Self: Add<Output = Self> + Sized,
-    {
-        let mut res = Self::one();
-        for _ in 0..n - 1 {
-            res = res + Self::one()
-        }
-        res
-    }
-
-    fn mul(self, n: usize) -> Self
-    where
-        Self: Add<Output = Self> + Clone,
-    {
-        let mut res = self.clone();
-        for _ in 0..n - 1 {
-            res = res + self.clone()
-        }
-        res
-    }
-
-    fn pow(&self, n: usize) -> Self
-    where
-        Self: Mul<Output = Self> + Clone,
-    {
-        (0..n).fold(Self::one(), |res, _| res * self.clone())
-    }
-}
 
 #[inline]
 fn one_minus<T: One + Sub<Output = T>>(t: T) -> T {
     T::one() - t
 }
 
-impl<T: One> OneExt for T {}
-
-macro_rules! impl_one_trait {
-    ($($t:ty),*) => {
-        $(
-            impl One for $t {
-                fn one() -> Self {
-                    1 as $t
-                }
-            }
-        )*
-    };
+fn n<T: One + Add<Output = T>>(n: usize) -> T {
+    assert_ne!(n, 0);
+    (0..(n - 1)).fold(T::one(), |a, _| a + T::one())
 }
 
-impl_one_trait! {
-    u8, u16, u32, u64, usize,
-    i8, i16, i32, i64, isize,
-    f32, f64
+fn mul_by_add<T: Zero + One + Add<Output = T> + Clone>(t: T, mut n: usize) -> T {
+    if n == 0 {
+        return T::zero();
+    }
+
+    let mut acc = T::zero();
+    let mut res = t;
+
+    while n > 1 {
+        if n % 2 == 0 {
+            res = res.clone() + res;
+            n /= 2;
+        } else {
+            acc = res.clone() + acc;
+            n -= 1;
+        }
+    }
+
+    acc + res
 }
 
-/// Linear interpolation
-#[inline]
-pub fn lerp<P, T>(a: P, b: P, t: T) -> P
+fn pow<T: One + Mul<Output = T> + Clone>(t: T, mut n: usize) -> T {
+    if n == 0 {
+        return T::one();
+    }
+
+    let mut acc = T::one();
+    let mut res = t;
+
+    while n > 1 {
+        if n % 2 == 0 {
+            res = res.clone() * res;
+            n /= 2;
+        } else {
+            acc = res.clone() * acc;
+            n -= 1;
+        }
+    }
+
+    acc * res
+}
+
+/// The core trait that provides the function to evaluate an interpolation object
+pub trait Interpolation<T> {
+    /// The type a point in the interpolation has
+    type Point: Add<Output = Self::Point> + Mul<T, Output = Self::Point>;
+
+    /// Get the point in the interpolation at value `t` (between `0` and `1`)
+    fn eval(self, t: T) -> Self::Point;
+}
+
+/// A Linear interpolation (Lerp) struct
+pub struct Linear<P> {
+    start: P,
+    end: P,
+}
+
+impl<P> Linear<P> {
+    #[allow(missing_docs)]
+    pub fn new(start: P, end: P) -> Self {
+        Self { start, end }
+    }
+}
+
+impl<T, P> Interpolation<T> for Linear<P>
 where
+    T: Clone + One + Sub<Output = T>,
     P: Add<Output = P> + Mul<T, Output = P>,
-    T: OneExt + Sub<Output = T> + Clone,
 {
-    a * one_minus(t.clone()) + b * t
+    type Point = P;
+
+    fn eval(self, t: T) -> Self::Point {
+        self.start * one_minus(t.clone()) + self.end * t
+    }
 }
 
-/// Quadratic bézier interpolation
-#[inline]
-pub fn qbez<P, T>(a: P, b: P, c: P, t: T) -> P
+/// A Quadratic Bézier interpolation struct
+pub struct QuadraticBezier<P> {
+    start: P,
+    control: P,
+    end: P,
+}
+
+impl<P> QuadraticBezier<P> {
+    #[allow(missing_docs)]
+    pub fn new(start: P, control: P, end: P) -> Self {
+        Self {
+            start,
+            control,
+            end,
+        }
+    }
+}
+
+impl<T, P> Interpolation<T> for QuadraticBezier<P>
 where
+    T: Clone + One + Add<Output = T> + Sub<Output = T> + Mul<Output = T>,
     P: Add<Output = P> + Mul<T, Output = P>,
-    T: OneExt + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Clone,
 {
-    let u = one_minus(t.clone());
-    let t2 = t.pow(2);
-    a * u.pow(2) + b * (T::n(2) * u * t) + c * t2
+    type Point = P;
+
+    fn eval(self, t: T) -> Self::Point {
+        let u = one_minus(t.clone());
+        let t2 = pow(t.clone(), 2);
+        self.start * pow(u.clone(), 2) + self.control * (n::<T>(2) * u * t) + self.end * t2
+    }
 }
 
-/// Cubic bézier interpolation
-#[inline]
-pub fn cubez<P, T>(a: P, b: P, c: P, d: P, t: T) -> P
+/// A Cubic Bézier interpolation struct
+pub struct CubicBezier<P> {
+    start: P,
+    control1: P,
+    control2: P,
+    end: P,
+}
+
+impl<P> CubicBezier<P> {
+    #[allow(missing_docs)]
+    pub fn new(start: P, control1: P, control2: P, end: P) -> Self {
+        Self {
+            start,
+            control1,
+            control2,
+            end,
+        }
+    }
+}
+
+impl<T, P> Interpolation<T> for CubicBezier<P>
 where
+    T: Clone + One + Add<Output = T> + Sub<Output = T> + Mul<Output = T>,
     P: Add<Output = P> + Mul<T, Output = P>,
-    T: OneExt + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Clone,
 {
-    let u = one_minus(t.clone());
-    let (t2, t3) = (t.pow(2), t.pow(3));
-    a * u.pow(3) + b * (T::n(3) * u.pow(2) * t) + c * (T::n(3) * u * t2) + d * t3
+    type Point = P;
+
+    fn eval(self, t: T) -> Self::Point {
+        let u = one_minus(t.clone());
+        let (t2, t3) = (pow(t.clone(), 2), pow(t.clone(), 3));
+        self.start * pow(u.clone(), 3)
+            + self.control1 * (n::<T>(3) * pow(u.clone(), 2) * t)
+            + self.control2 * (n::<T>(3) * u * t2)
+            + self.end * t3
+    }
 }
 
-#[cfg(feature = "use_std")]
+/// linear interpolation: a shortcut for quick usage
+#[inline]
+pub fn lerp<T, P>(start: P, end: P, t: T) -> P
+where
+    T: Clone + One + Sub<Output = T>,
+    P: Add<Output = P> + Mul<T, Output = P>,
+{
+    Linear::new(start, end).eval(t)
+}
+
+/// quadratic bézier interpolation: a shortcut for quick usage
+#[inline]
+pub fn bez2<T, P>(start: P, control: P, end: P, t: T) -> P
+where
+    T: Clone + One + Add<Output = T> + Sub<Output = T> + Mul<Output = T>,
+    P: Add<Output = P> + Mul<T, Output = P>,
+{
+    QuadraticBezier::new(start, control, end).eval(t)
+}
+
+/// quadratic bézier interpolation: a shortcut for quick usage (identical to [`bez2`](#function.bez2)
+#[inline]
+pub fn qbez<T, P>(start: P, control: P, end: P, t: T) -> P
+where
+    T: Clone + One + Add<Output = T> + Sub<Output = T> + Mul<Output = T>,
+    P: Add<Output = P> + Mul<T, Output = P>,
+{
+    bez2(start, control, end, t)
+}
+
+/// cubic bézier interpolation: a shortcut for quick usage
+#[inline]
+pub fn bez3<T, P>(start: P, control1: P, control2: P, end: P, t: T) -> P
+where
+    T: Clone + One + Add<Output = T> + Sub<Output = T> + Mul<Output = T>,
+    P: Add<Output = P> + Mul<T, Output = P>,
+{
+    CubicBezier::new(start, control1, control2, end).eval(t)
+}
+
+/// cubic bézier interpolation: a shortcut for quick usage (identical to [`bez3`](#function.bez3)
+#[inline]
+pub fn cbez<T, P>(start: P, control1: P, control2: P, end: P, t: T) -> P
+where
+    T: Clone + One + Add<Output = T> + Sub<Output = T> + Mul<Output = T>,
+    P: Add<Output = P> + Mul<T, Output = P>,
+{
+    bez3(start, control1, control2, end, t)
+}
+
 /// Computes the binomial coefficient (nCk)
-fn choose(n: usize, k: usize) -> usize {
+fn binomial(n: usize, k: usize) -> usize {
     let half = n / 2;
-    // this also does the checking for k > n bc if k > n then k > half and (n -k) < 0 => subtract with overflow
+    // this also panicks (desired behaviour) for k > n
+    // because if k > n then k > half and (n - k) < 0 => subtract with overflow
     let k = if k > half { n - k } else { k };
-    if n == 0 || n == 1 || n == k || k == 0 {
-        1
-    } else if n == 2 {
-        [1, 2][k]
-    } else if n == 3 {
-        [1, 3][k]
-    } else if n == 4 {
-        [1, 4, 6][k]
-    } else if n == 5 {
-        [1, 5, 10][k]
-    } else {
-        choose(n - 1, k - 1) + choose(n - 1, k)
+
+    match n {
+        0 | 1 => 1,
+        _ if k == 0 => 1,
+        2 => [1, 2][k],
+        3 => [1, 3][k],
+        4 => [1, 4, 6][k],
+        5 => [1, 5, 10][k],
+        _ => binomial(n - 1, k - 1) + binomial(n - 1, k),
     }
 }
 
-#[cfg(feature = "use_std")]
-/// Bézier interpolation of any degree (greater than 0)
-pub fn bez<P, T>(mut pts: Vec<P>, t: T) -> Result<P, &'static str>
-where
-    P: Add<Output = P> + Mul<T, Output = P>,
-    T: OneExt + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Clone,
-{
-    match pts.len() {
-        0 => Err("no points given"),
-        1 => Ok(pts.pop().unwrap()),
-        2 => {
-            let b = pts.pop().unwrap();
-            let a = pts.pop().unwrap();
-            Ok(lerp(a, b, t))
-        }
-        3 => {
-            let c = pts.pop().unwrap();
-            let b = pts.pop().unwrap();
-            let a = pts.pop().unwrap();
-            Ok(qbez(a, b, c, t))
-        }
-        4 => {
-            let d = pts.pop().unwrap();
-            let c = pts.pop().unwrap();
-            let b = pts.pop().unwrap();
-            let a = pts.pop().unwrap();
-            Ok(cubez(a, b, c, d, t))
-        }
-        l => {
-            let n = l - 1;
-            let u = one_minus(t.clone());
+/// True arbitrary-order bézier interpolation
+pub struct Bezier<'a, P> {
+    start: P,
+    control_points: &'a [P],
+    end: P,
+}
 
-            let last = pts.pop().unwrap();
-            let mut res = last * t.pow(n);
-
-            let mut k = 0;
-            for p in pts {
-                let c = choose(n, k);
-                let mul = OneExt::mul(u.pow(n - k) * t.pow(k), c);
-                res = res + p * mul;
-                k += 1;
-            }
-            Ok(res)
+impl<'a, P> Bezier<'a, P> {
+    #[allow(missing_docs)]
+    pub fn new(start: P, control_points: &'a [P], end: P) -> Self {
+        Self {
+            start,
+            control_points,
+            end,
         }
     }
+}
+
+impl<'a, T, P> Interpolation<T> for Bezier<'a, P>
+where
+    T: Clone + Zero + One + Add<Output = T> + Sub<Output = T> + Mul<Output = T>,
+    P: Clone + Add<Output = P> + Mul<T, Output = P>,
+{
+    type Point = P;
+
+    fn eval(self, t: T) -> Self::Point {
+        match self.control_points {
+            [] => lerp(self.start, self.end, t),
+            [c] => bez2(self.start, c.clone(), self.end, t),
+            [c1, c2] => bez3(self.start, c1.clone(), c2.clone(), self.end, t),
+            c => {
+                let n = c.len() + 1;
+                let u = one_minus(t.clone());
+
+                let mut res = self.end * pow(t.clone(), n);
+
+                for (k, p) in std::iter::once(self.start)
+                    .chain(c.iter().cloned())
+                    .enumerate()
+                {
+                    let c = binomial(n, k);
+                    let mul = mul_by_add(pow(u.clone(), n - k) * pow(t.clone(), k), c);
+                    res = res + p * mul;
+                }
+                res
+            }
+        }
+    }
+}
+
+/// arbitrary-order bézier interpolation: a shortcut for quick usage
+#[inline]
+pub fn bez<T, P>(start: P, control_points: &[P], end: P, t: T) -> P
+where
+    T: Clone + Zero + One + Add<Output = T> + Sub<Output = T> + Mul<Output = T>,
+    P: Clone + Add<Output = P> + Mul<T, Output = P>,
+{
+    Bezier::new(start, control_points, end).eval(t)
 }
 
 #[cfg(test)]
@@ -195,7 +309,6 @@ mod test {
             Self::new(x as f64, y as f64)
         }
 
-        #[cfg(feature = "use_std")]
         pub fn less_than(&self, x: f64, y: f64) -> bool {
             self.x < x && self.y < y
         }
@@ -260,24 +373,23 @@ mod test {
         let d = Point::newi(3, -100);
         assert_eq!(
             lerp(qbez(a, b, c, 0.2), qbez(b, c, d, 0.2), 0.2),
-            cubez(a, b, c, d, 0.2)
+            cbez(a, b, c, d, 0.2)
         );
     }
 
     #[test]
-    #[cfg(feature = "use_std")]
     fn test_nbez() {
         let a = Point::newi(5, 0);
         let b = Point::newi(17, -12);
         let c = Point::newi(3, 0);
         let d = Point::newi(3, -23);
         let e = Point::newi(4, 5);
-        assert_eq!(Ok(lerp(a, b, 0.6)), bez(vec![a, b], 0.6));
-        assert_eq!(Ok(qbez(a, b, c, 0.6)), bez(vec![a, b, c], 0.6));
-        assert_eq!(Ok(cubez(a, b, c, d, 0.6)), bez(vec![a, b, c, d], 0.6));
-        let r = bez(vec![a, b, c, d, e], 0.6);
-        let ctrl = lerp(cubez(a, b, c, d, 0.6), cubez(b, c, d, e, 0.6), 0.6);
+        assert_eq!(lerp(a, b, 0.6), bez(a, &[], b, 0.6));
+        assert_eq!(qbez(a, b, c, 0.6), bez(a, &[b], c, 0.6));
+        assert_eq!(cbez(a, b, c, d, 0.6), bez(a, &[b, c], d, 0.6));
+        let r = bez(a, &[b, c, d], e, 0.6);
+        let ctrl = lerp(cbez(a, b, c, d, 0.6), cbez(b, c, d, e, 0.6), 0.6);
         // small rounding errors should not make the test fail
-        assert!(r.is_ok() && (r.unwrap() - ctrl).less_than(0.00000001, 0.00000001));
+        assert!((r - ctrl).less_than(0.00000001, 0.00000001));
     }
 }

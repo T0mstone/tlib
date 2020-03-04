@@ -10,11 +10,13 @@ pub fn unzip<A, B>(v: Vec<(A, B)>) -> (Vec<A>, Vec<B>) {
 
 /// The same as the [`zip`](#function.zip) function but called as `Vec::zip`
 pub trait VecZipTrait<T, U> {
+    #[allow(missing_docs)]
     fn zip(self, other: Vec<U>) -> Vec<(T, U)>;
 }
 
 /// The same as the [`unzip`](#function.unzip) function but called as `Vec::unzip`
 pub trait VecUnzipTrait<T, U> {
+    #[allow(missing_docs)]
     fn unzip(self) -> (Vec<T>, Vec<U>);
 }
 

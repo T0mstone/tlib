@@ -1,12 +1,22 @@
+/// A trait a lot of tuple types implement. Basically a substitution for variadic generics
 pub trait Tuple<Aug> {
+    /// The first type
     type Head;
+    /// A tuple of the remaining types
     type Tail: Tuple<Self::Head>;
+    /// The next higher tuple type
     type Augmented;
 
+    /// The amount of items in the tuple
+    const LEN: usize;
+
+    /// split a tuple at the value level
     fn split_first(self) -> (Self::Head, Self::Tail);
 
+    /// construct a tuple at the value level
     fn construct(head: Self::Head, tail: Self::Tail) -> Self;
 
+    /// push a new head to the front of the tuple
     fn push_head(self, new_head: Aug) -> Self::Augmented
     where
         Self::Augmented: Tuple<Self::Head, Head = Aug, Tail = Self>,
@@ -14,34 +24,14 @@ pub trait Tuple<Aug> {
     {
         Self::Augmented::construct(new_head, self)
     }
-
-    fn len() -> usize;
-}
-
-pub trait TupleTypeUnion {
-    type Union;
-}
-
-impl TupleTypeUnion for ((), ()) {
-    type Union = ();
-}
-
-impl<A1> TupleTypeUnion for ((A1,), ()) {
-    type Union = (A1,);
-}
-
-impl<A1, A2> TupleTypeUnion for ((A1,), (A2,)) {
-    type Union = (A1, A2);
-}
-
-impl<A1, B1, A2> TupleTypeUnion for ((A1, B1), (A2,)) {
-    type Union = (A1, B1, A2);
 }
 
 impl<Aug> Tuple<Aug> for () {
     type Head = ();
     type Tail = ();
     type Augmented = (Aug,);
+
+    const LEN: usize = 0;
 
     fn split_first(self) -> (Self::Head, Self::Tail) {
         ((), ())
@@ -50,16 +40,14 @@ impl<Aug> Tuple<Aug> for () {
     fn construct(_: Self::Head, _: Self::Tail) -> Self {
         ()
     }
-
-    fn len() -> usize {
-        0
-    }
 }
 
 impl<A, Aug> Tuple<Aug> for (A,) {
     type Head = A;
     type Tail = ();
     type Augmented = (Aug, A);
+
+    const LEN: usize = 1;
 
     fn split_first(self) -> (Self::Head, Self::Tail) {
         (self.0, ())
@@ -68,10 +56,6 @@ impl<A, Aug> Tuple<Aug> for (A,) {
     fn construct(h: Self::Head, _: Self::Tail) -> Self {
         (h,)
     }
-
-    fn len() -> usize {
-        1
-    }
 }
 
 impl<A, B, Aug> Tuple<Aug> for (A, B) {
@@ -79,16 +63,14 @@ impl<A, B, Aug> Tuple<Aug> for (A, B) {
     type Tail = (B,);
     type Augmented = (Aug, A, B);
 
+    const LEN: usize = 2;
+
     fn split_first(self) -> (Self::Head, Self::Tail) {
         (self.0, (self.1,))
     }
 
     fn construct(h: Self::Head, t: Self::Tail) -> Self {
         (h, t.0)
-    }
-
-    fn len() -> usize {
-        2
     }
 }
 
