@@ -110,7 +110,6 @@ macro_rules! gen_zip_and_unzip_fns_accum {
 }
 
 // Generated functions
-
 gen_zip_and_unzip_fns_accum! {
     zip3, unzip3 => t1 @ a: A, t2 @ b: B, t3 @ c: C;
     zip4, unzip4 => t4 @ d: D;

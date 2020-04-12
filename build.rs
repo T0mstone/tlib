@@ -174,17 +174,14 @@ fn make_file(start: usize, len: usize) {
 }
 
 fn main() {
-    make_file(3, 23);
-    make_file(26, 25);
-    make_file(51, 50);
-    make_file(101, 50);
-    make_file(151, 50);
+    // make_file(3, 23);
+    // make_file(26, 25);
+    // make_file(51, 50);
+    // make_file(101, 50);
+    // make_file(151, 50);
 
     if let Ok(s) = std::env::var("PROFILE") {
-        match &s[..] {
-            "debug" => println!("cargo:rustc-cfg=profile_debug"),
-            "release" => println!("cargo:rustc-cfg=profile_release"),
-            _ => (),
-        }
+        // values: debug, release
+        println!("cargo:rustc-cfg=profile=\"{}\"", s);
     }
 }

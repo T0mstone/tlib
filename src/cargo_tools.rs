@@ -90,29 +90,23 @@ impl CargoPackageInfo {
 
 /// The profile you are compiling with
 #[allow(missing_docs)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Hash, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum CargoProfile {
     Debug,
     Release,
-    Unknown,
 }
 
 impl CargoProfile {
-    #[cfg(profile_debug)]
     /// The profile you are compiling with
-    pub fn this() -> Self {
-        CargoProfile::Debug
-    }
-
-    #[cfg(profile_release)]
-    /// The profile you are compiling with
-    pub fn this() -> Self {
-        CargoProfile::Release
-    }
-
-    #[cfg(not(any(profile_debug, profile_release)))]
-    /// The profile you are compiling with
-    pub fn this() -> Self {
-        CargoProfile::Unknown
+    ///
+    /// In case that is neither `debug` nor `release`, this returns `None`
+    pub fn current() -> Option<Self> {
+        #[cfg(profile = "debug")]
+        return Some(CargoProfile::Debug);
+        #[cfg(profile = "release")]
+        return Some(CargoProfile::Release);
+        // in all other cases (currently this shouldn't be possible)
+        #[allow(unused)]
+        None
     }
 }

@@ -1,7 +1,7 @@
 #[cfg(not(feature = "use_std"))]
 use core as std;
 
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 /// A type that can only be initialized once
 ///
@@ -32,6 +32,15 @@ impl<T> Deref for Singleton<T> {
             panic!("tried to dereference an uninitialized Singleton");
         }
         self.as_ref().unwrap()
+    }
+}
+
+impl<T> DerefMut for Singleton<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        if !self.is_initialized() {
+            panic!("tried to dereference an uninitialized Singleton");
+        }
+        self.as_mut().unwrap()
     }
 }
 
@@ -90,7 +99,6 @@ impl<T> Singleton<T> {
     /// Panics if the value is not initialized.
     pub fn unwrap(self) -> T {
         self.assert_init("unwrap");
-        //          ↓↓↓ this cannot fail
         self.inner.unwrap()
     }
 
@@ -103,7 +111,6 @@ impl<T> Singleton<T> {
         if !self.is_initialized() {
             panic!("{}", msg);
         }
-        //          ↓↓↓ this cannot fail
         self.inner.unwrap()
     }
 
@@ -114,10 +121,7 @@ impl<T> Singleton<T> {
     /// Panics if the value is not initialized.
     pub fn inner(&self) -> &T {
         self.assert_init("inner");
-        match self.inner {
-            Some(ref v) => v,
-            _ => unreachable!(),
-        }
+        self.inner.as_ref().unwrap()
     }
 
     /// Returns a mutable reference to the value v of the `Singleton<T>` if it is initialized.
@@ -126,10 +130,7 @@ impl<T> Singleton<T> {
     /// Panics if the value is not initialized.
     pub fn inner_mut(&mut self) -> &mut T {
         self.assert_init("inner_mut");
-        match self.inner {
-            Some(ref mut v) => v,
-            _ => unreachable!(),
-        }
+        self.inner.as_mut().unwrap()
     }
 
     /// Converts from Singleton<T> to Singleton<&T>
@@ -154,7 +155,7 @@ impl<T> Singleton<T> {
     }
 
     /// works like [`map`](#method.map) but modifies `self` instead of returning a new `Singleton`.
-    pub fn map_inplace<F: FnMut(T) -> T>(&mut self, mut f: F) {
+    pub fn map_in_place<F: FnMut(T) -> T>(&mut self, mut f: F) {
         let inner = match self.inner.take() {
             Some(t) => Some(f(t)),
             None => None,

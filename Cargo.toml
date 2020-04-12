@@ -1,21 +1,13 @@
 [package]
 name = "tlib"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["T0mstone <realt0mstone@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-num-traits = { version = "0.2.11", optional = true }
 
 [features]
 default = []
 
 use_std = []
-interpolation = ["num-traits"]
-tuple_tools = []
-tuple_tools_50 = ["tuple_tools"]
-tuple_tools_100 = ["tuple_tools_50"]
-tuple_tools_150 = ["tuple_tools_100"]
-tuple_tools_200 = ["tuple_tools_150"]
-tuple_tools_all = ["tuple_tools_200"]
 
