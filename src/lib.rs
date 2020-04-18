@@ -3,6 +3,7 @@
 //! **Crate Features:**
 //!
 //! - `use_std` disables no_std compatibility, adding the `vec_zip` module and the `hashmap` and `hashset` macros
+//! - `pow` enables the `pow` module
 
 #![cfg_attr(not(feature = "use_std"), no_std)]
 #![deny(missing_docs)]
