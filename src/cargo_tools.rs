@@ -91,7 +91,7 @@ impl CargoPackageInfo {
 /// The profile you are compiling with
 ///
 /// In addition to this, the build script also provides a `profile` key
-/// so that `#[cfg(profile = "debug"]` and `#[cfg(profile = "release"]`
+/// so that `#[cfg(profile = "debug")]` and `#[cfg(profile = "release")]`
 /// can be used for conditional compilation.
 #[allow(missing_docs)]
 #[derive(Hash, Debug, Copy, Clone, Eq, PartialEq)]

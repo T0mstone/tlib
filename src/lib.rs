@@ -17,6 +17,10 @@ mod singleton;
 /// Info about your cargo package
 pub mod cargo_tools;
 
+/// Fully generic exponentiation functions
+#[cfg(feature = "pow")]
+pub mod pow;
+
 /// Some useful Functions for converting between tuples of `Vec`s and `Vec`s of tuples
 #[cfg(feature = "use_std")]
 pub mod vec_zip;

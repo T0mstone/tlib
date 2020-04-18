@@ -67,6 +67,7 @@ macro_rules! zip_rec {
 macro_rules! gen_zip_fn {
     ($fname:ident => $($binding:ident @ $param:ident: $t:ident),*) => {
         /// Like [`zip`](#function.zip) but with more `Vec`s
+        #[allow(clippy::too_many_arguments)]
         pub fn $fname<$($t),*>($($param: Vec<$t>),*) -> Vec<($($t),*)> {
             zip_rec!($($param),*).map(flatten_tuple_fn!($($binding),*)).collect()
         }

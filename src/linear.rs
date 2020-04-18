@@ -18,6 +18,7 @@ where
 /// let map = MapRange::from_start_end((1, 3), (2, 6));
 /// assert_eq!(map.into_eval(2), 4);
 /// ```
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct MapRange<T> {
     before_range_start: T,
     before_range_len: T,
@@ -55,23 +56,26 @@ impl<T> MapRange<T> {
 
     /// Evaluate the map for a point.
     ///
-    /// This does not consume `self` however it requires `T: Clone`
+    /// - This does not consume `self` however it requires `T: Clone`
+    /// - This does the division after everything else to avoid precision errors
     pub fn eval(&self, point: T) -> T
     where
         T: Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + Clone,
     {
-        let perc = (point - self.before_range_start.clone()) / self.before_range_len.clone();
-        self.after_range_len.clone() * perc + self.after_range_start.clone()
+        let a = self.after_range_len.clone() * (point - self.before_range_start.clone());
+        let b = self.after_range_start.clone() * self.before_range_len.clone();
+        (a + b) / self.before_range_len.clone()
     }
 
     /// Evaluate the map for a point.
     ///
-    /// This does not require `T: Clone` however it consumes `self`
+    /// - This does not require `T: Clone` however it consumes `self`
+    /// - This does the division second to last to avoid precision errors as much as possible while avoiding `Clone`
     pub fn into_eval(self, point: T) -> T
     where
         T: Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T>,
     {
-        let perc = (point - self.before_range_start) / self.before_range_len;
-        self.after_range_len * perc + self.after_range_start
+        let a = self.after_range_len * (point - self.before_range_start);
+        (a / self.before_range_len) + self.after_range_start
     }
 }

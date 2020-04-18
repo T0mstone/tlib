@@ -8,7 +8,10 @@ use std::ops::{Deref, DerefMut};
 /// Intended for use with `static mut` and with types you only ever need once (e.g. a Context or a Logger)
 ///
 /// # Example
-/// ```ignore
+/// ```no_run
+/// # use tlib::Singleton;
+/// # struct Logger;
+/// # impl Logger { pub fn new() -> Self { Logger } }
 /// static mut LOGGER: Singleton<Logger> = Singleton::new();
 ///
 /// pub fn init() {
@@ -166,6 +169,7 @@ impl<T> Singleton<T> {
 
 impl<T: Clone> Singleton<&T> {
     /// Maps a `Singleton<&T>` to a `Singleton<T>` by cloning the contents of the singleton.
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     pub fn cloned(&self) -> Singleton<T> {
         Singleton {
             inner: self.inner.cloned(),
@@ -175,6 +179,7 @@ impl<T: Clone> Singleton<&T> {
 
 impl<T: Copy> Singleton<&T> {
     /// Maps a `Singleton<&T>` to a `Singleton<T>` by copying the contents of the singleton.
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     pub fn copied(&self) -> Singleton<T> {
         Singleton {
             inner: self.inner.copied(),
