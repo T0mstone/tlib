@@ -104,7 +104,7 @@ impl CargoProfile {
     /// The profile you are compiling with
     ///
     /// In case that is neither `debug` nor `release`, this returns `None`
-    pub fn current() -> Option<Self> {
+    pub const fn current() -> Option<Self> {
         #[cfg(profile = "debug")]
         return Some(CargoProfile::Debug);
         #[cfg(profile = "release")]
