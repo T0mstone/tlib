@@ -1,50 +1,118 @@
 #[cfg(not(feature = "use_std"))]
-use core::env;
+use core::{self as std, env};
 
-/// The version of your Cargo package (with major, minor and patch version)
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct CargoPackageVersion {
+use std::cmp::Ordering;
+use std::hint::unreachable_unchecked;
+
+// note: maybe add a PackageVersionDifference type in the future
+
+/// The version of a Cargo package (with major, minor and patch version)
+///
+/// For more information, see the [`version`] section in the Cargo book as well as the [official semver website](https://semver.org)
+///
+/// [`version`]: https://doc.rust-lang.org/cargo/reference/manifest.html#the-version-field
+#[derive(Debug, Copy, Clone, Eq, Hash)]
+pub struct CargoPackageVersion<'a> {
     major: u64,
     minor: u64,
     patch: u64,
-    pre_release: &'static str,
+    pre_release: Option<&'a str>,
 }
 
-#[allow(missing_docs)]
-impl CargoPackageVersion {
+impl<'a, 'b> PartialEq<CargoPackageVersion<'b>> for CargoPackageVersion<'a> {
+    fn eq(&self, other: &CargoPackageVersion<'b>) -> bool {
+        self.major == other.major
+            && self.minor == other.minor
+            && self.patch == other.patch
+            && self.pre_release == other.pre_release
+    }
+}
+
+impl<'a> Ord for CargoPackageVersion<'a> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other)
+            .unwrap_or_else(|| unsafe { unreachable_unchecked() })
+    }
+}
+
+impl<'a, 'b> PartialOrd<CargoPackageVersion<'b>> for CargoPackageVersion<'a> {
+    fn partial_cmp(&self, other: &CargoPackageVersion<'b>) -> Option<Ordering> {
+        // IMPORTANT: never return `None` from this in any future changes
+        //      or else the `Ord` implementation will break
+        Some(if self.major == other.major {
+            if self.minor == other.minor {
+                if self.patch == other.patch {
+                    match (self.pre_release, other.pre_release) {
+                        (Some(sp), Some(op)) => sp.cmp(op),
+                        (None, Some(_)) => Ordering::Greater,
+                        (Some(_), None) => Ordering::Less,
+                        (None, None) => Ordering::Equal,
+                    }
+                } else {
+                    self.patch.cmp(&other.patch)
+                }
+            } else {
+                self.minor.cmp(&other.minor)
+            }
+        } else {
+            self.major.cmp(&other.major)
+        })
+    }
+}
+
+impl CargoPackageVersion<'static> {
     /// Get the version of your cargo package
-    pub fn this() -> Self {
+    pub fn current() -> Self {
+        let major = env!("CARGO_PKG_VERSION_MAJOR").parse();
+        let minor = env!("CARGO_PKG_VERSION_MINOR").parse();
+        let patch = env!("CARGO_PKG_VERSION_PATCH").parse();
+        let pre_release = env!("CARGO_PKG_VERSION_PRE");
+
+        let patch_default = if major.is_err() && minor.is_err() {
+            1
+        } else {
+            0
+        };
+
         Self {
-            major: env!("CARGO_PKG_VERSION_MAJOR").parse().unwrap(),
-            minor: env!("CARGO_PKG_VERSION_MINOR").parse().unwrap(),
-            patch: env!("CARGO_PKG_VERSION_PATCH").parse().unwrap(),
-            pre_release: option_env!("CARGO_PGK_VERSION_PRE").unwrap_or(""),
+            major: major.unwrap_or(0),
+            minor: minor.unwrap_or(0),
+            patch: patch.unwrap_or(patch_default),
+            pre_release: if pre_release.is_empty() {
+                None
+            } else {
+                Some(pre_release)
+            },
         }
     }
+}
 
+impl<'a> CargoPackageVersion<'a> {
+    /// The major version is the first number in the version string
     pub fn major(&self) -> u64 {
         self.major
     }
 
+    /// The minor version is the second number in the version string
     pub fn minor(&self) -> u64 {
         self.minor
     }
 
+    /// The patch version is the third number in the version string
     pub fn patch(&self) -> u64 {
         self.patch
     }
 
-    pub fn pre_release(&self) -> &'static str {
+    /// The pre-release version is an optional appendix
+    pub fn pre_release(&self) -> Option<&'a str> {
         self.pre_release
     }
 }
 
-/// Allows you to access info about your Cargo package
-/// (which is available in the various `CARGO_PKG_*` environment variables)
-/// in a nice way
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+/// Information about a Cargo package
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct CargoPackageInfo {
-    version: CargoPackageVersion,
+    version: CargoPackageVersion<'static>,
     name: &'static str,
     authors: &'static str,
     description: &'static str,
@@ -54,9 +122,13 @@ pub struct CargoPackageInfo {
 
 impl CargoPackageInfo {
     /// Get the info for your cargo package
-    pub fn this() -> Self {
+    ///
+    /// You are able to get the same info via
+    /// the various `CARGO_PKG_*` environment variables
+    /// but this has a nicer API
+    pub fn current() -> Self {
         Self {
-            version: CargoPackageVersion::this(),
+            version: CargoPackageVersion::current(),
             name: env!("CARGO_PKG_NAME"),
             authors: env!("CARGO_PKG_AUTHORS"),
             description: env!("CARGO_PKG_DESCRIPTION"),
@@ -88,29 +160,27 @@ impl CargoPackageInfo {
     }
 }
 
-/// The profile you are compiling with
-///
-/// In addition to this, the build script also provides a `profile` key
-/// so that `#[cfg(profile = "debug")]` and `#[cfg(profile = "release")]`
-/// can be used for conditional compilation.
-#[allow(missing_docs)]
+/// A Cargo compilation profile
 #[derive(Hash, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum CargoProfile {
+    /// Cargo's `debug` profile
     Debug,
+    /// Cargo's `release` profile
     Release,
+    /// Currently, this should be unreachable,
+    /// but in theory, Cargo supports arbitrary values for `profile`
+    Other(&'static str),
 }
 
 impl CargoProfile {
     /// The profile you are compiling with
-    ///
-    /// In case that is neither `debug` nor `release`, this returns `None`
-    pub const fn current() -> Option<Self> {
+    pub const fn current() -> Self {
         #[cfg(profile = "debug")]
-        return Some(CargoProfile::Debug);
+        return CargoProfile::Debug;
         #[cfg(profile = "release")]
-        return Some(CargoProfile::Release);
+        return CargoProfile::Release;
         // in all other cases (currently this shouldn't be possible)
         #[allow(unused)]
-        None
+        CargoProfile::Other(env!("profile"))
     }
 }
