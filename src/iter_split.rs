@@ -1,3 +1,7 @@
+use crate::auto_escape::{
+    indicator, indicator_not_escaped, unescape_all_except, AutoEscape, Unescape,
+};
+
 /// An iterator for splitting another iterator by single items
 pub struct SplitIter<I: Iterator, F> {
     // (dyn) the number of split segments already returned
@@ -98,5 +102,55 @@ impl<I: IntoIterator> IterSplit for I {
             keep_sep,
             last_sep: None,
         }
+    }
+}
+
+/// A shortcut trait for the common operation of splitting a string
+/// according to a single delimeter, respecting escaping
+pub trait SplitNotEscapedString {
+    #[allow(missing_docs)]
+    fn split_not_escaped_impl(
+        &self,
+        max_len: Option<usize>,
+        sep: char,
+        esc: char,
+        keep_sep: bool,
+    ) -> Vec<String>;
+
+    /// Analogous to [`IterSplit::split`](trait.IterSplit#method.split)
+    ///
+    /// Splits with `sep`, escapes with `esc`
+    #[inline]
+    fn split_not_escaped(&self, sep: char, esc: char, keep_sep: bool) -> Vec<String> {
+        self.split_not_escaped_impl(None, sep, esc, keep_sep)
+    }
+
+    /// Analogous to [`IterSplit::splitn`](trait.IterSplit#method.splitn)
+    ///
+    /// Splits with `sep`, escapes with `esc`
+    #[inline]
+    fn splitn_not_escaped(&self, n: usize, sep: char, esc: char, keep_sep: bool) -> Vec<String> {
+        self.split_not_escaped_impl(Some(n), sep, esc, keep_sep)
+    }
+}
+
+impl<S: AsRef<str>> SplitNotEscapedString for S {
+    fn split_not_escaped_impl(
+        &self,
+        max_len: Option<usize>,
+        sep: char,
+        esc: char,
+        keep_sep: bool,
+    ) -> Vec<String> {
+        self.as_ref()
+            .chars()
+            .auto_escape(indicator(esc))
+            .split_impl(max_len, indicator_not_escaped(sep), keep_sep)
+            .map(|v| {
+                v.into_iter()
+                    .unescape(unescape_all_except(sep, esc))
+                    .collect::<String>()
+            })
+            .collect()
     }
 }
