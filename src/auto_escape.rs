@@ -94,15 +94,16 @@ mod unescape_iter {
         }
     }
 
+    #[allow(missing_docs)]
+    pub type UnescapeIgnoreIter<T, I> = Map<I, fn((bool, T)) -> T>;
+
     /// Trait for creating an [`UnescapeIter`](struct.UnescapeIter.html)
     pub trait Unescape: Sized + IntoIterator + crate::into_iter_seal::IntoIterSeal {
         /// The item inside the escaped-tuple
         type UnescapedItem;
 
         /// Creates an Iterator which completely discards all escapedness information
-        fn unescape_ignore(
-            self,
-        ) -> Map<Self::IntoIter, fn((bool, Self::UnescapedItem)) -> Self::UnescapedItem>;
+        fn unescape_ignore(self) -> UnescapeIgnoreIter<Self::UnescapedItem, Self::IntoIter>;
 
         /// Creates an `UnescapeIter` which uses `escape_item` to generate escape items
         /// - `escape_item` is given the current item to decide what to unescape it as
@@ -118,9 +119,7 @@ mod unescape_iter {
     impl<T, I: IntoIterator<Item = (bool, T)>> Unescape for I {
         type UnescapedItem = T;
 
-        fn unescape_ignore(
-            self,
-        ) -> Map<I::IntoIter, fn((bool, Self::UnescapedItem)) -> Self::UnescapedItem> {
+        fn unescape_ignore(self) -> UnescapeIgnoreIter<Self::UnescapedItem, Self::IntoIter> {
             self.into_iter().map(|t| t.1)
         }
 
